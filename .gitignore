@@ -19,3 +19,8 @@ data/synthetic/generated/*
 !data/synthetic/generated/.gitkeep
 
 .env
+
+# trained model weights/checkpoints - too large for git, reproducible via
+# scripts/train_model.py
+models/
+
