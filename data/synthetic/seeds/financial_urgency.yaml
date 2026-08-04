@@ -1,0 +1,16 @@
+category: financial_urgency
+examples:
+  - text: "Anne, telefonum bozuldu bu numaradan yaziyorum, acil 2000 TL gonderir misin, aksam oderim"
+    notes: "hijacked-relative / fake-WhatsApp urgent money request pattern"
+  - text: "Kredi basvurunuz onaylandi! Son odeme tarihi bugun, hemen tamamlamazsaniz iptal olacak: kredi-onay24.com"
+  - text: "Icra takibiniz baslatildi, borcunuzu bugun odemezseniz haciz gelecek. Odeme linki: icra-odeme.net"
+  - text: "Oglum, kaza yaptim hastanedeyim, ameliyat parasi lazim acil, bu hesaba gonder: TR330006100519786457841326"
+  - text: "Elektrik faturaniz odenmedi, yarin kesinti uygulanacak, hemen ode: enerji-odeme-son.com"
+  - text: "SGK borcunuz nedeniyle maasiniza haciz gelecek, bugun ode son sans: sgk-borc-odeme.info"
+  - text: "Yatirim firsati kacmasin! Bugun 1000 TL yatir, yarin 3000 TL cek garantili: hizlikazanc.com"
+  - text: "Kisa sureli nakit ihtiyaciniz mi var? Kefilsiz aninda onay kredi, bugun basvur: aninonay-kredi.com"
+  - text: "Kizim, telefon kirildi yeni numaram bu, acil kontor/odeme yapman lazim hemen ara"
+    notes: "hijacked-relative pattern, variant of the 'anne' example with a different family member"
+  - text: "Vergi cezaniz gecikme faizi islemeden bugun ode, son gun bugun: vergi-son-odeme.net"
+  - text: "Emekli maasiniza ozel promosyon, bankanizi degistirin 5000 TL hediye kazanin hemen basvurun"
+  - text: "Elektrik/su borcu nedeniyle icraya dusmemek icin hemen bu hesaba odeme yapin: TR120006400000112233445566"

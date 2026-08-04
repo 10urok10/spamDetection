@@ -1,0 +1,17 @@
+category: phishing
+examples:
+  - text: "Bankaniz guvenlik nedeniyle hesabinizi gecici olarak kisitladi. Dogrulamak icin: guvenlik-bankam.com/dogrula"
+  - text: "Hesabinizda supheli giris tespit edildi. Erisiminizi geri kazanmak icin bilgilerinizi guncelleyin: hesap-guvenlik.net"
+  - text: "Instagram hesabiniz 24 saat icinde kalici olarak silinecek. Itiraz etmek icin giris yapin: instagram-itiraz.com"
+  - text: "Kargo teslimatiniz icin gumruk vergisi odenmemis. Odeme yapmak icin: kargo-odeme-tr.com/vergi"
+  - text: "Sifreniz sizdirildi! Hesabinizi korumak icin hemen yeni sifre belirleyin: guvenli-giris-tr.com"
+  - text: "Kredi kartinizda olagandisi harcama tespit edildi. Onaylamak/reddetmek icin tiklayin: kartguvenlik-bankasi.com"
+  - text: "Bir cihazdan hesabiniza giris yapildi, siz degilseniz hemen bilgilerinizi dogrulayin: apple-id-dogrulama.com"
+  - text: "E-Devlet sifreniz suresi doldu, yenilemek icin TC kimlik no ve sifrenizi girin: edevlet-yenile.info"
+    notes: "impersonates government e-Devlet portal requesting national ID + password - high severity ATO pattern"
+  - text: "WhatsApp hesabiniz baska bir cihazda aktiflestirildi. Degilseniz hemen linke tiklayip iptal edin: wa-guvenlik.com"
+  - text: "Vergi dairesinden iade bildirimi: 1.850 TL iadeniz onaylandi, almak icin IBAN bilgilerinizi girin: gib-iade.net"
+  - text: "PTT kargonuz adrese sigmadi, teslim adresini teyit edin: ptt-teslimat-onay.com"
+  - text: "Trendyol hesabinizdan supheli siparis verildi, iptal etmek icin giris yapin: trendyol-siparis-iptal.com"
+  - text: "Sosyal medya hesabiniz telif hakki ihlali nedeniyle askiya alinacak, itiraz formu: telif-itiraz-meta.com"
+  - text: "Turkiye Is Bankasi guvenlik ekibi: hesabinizda dondurma islemi baslatildi, iptal icin: isbank-guvenlik-merkezi.com"
