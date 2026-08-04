@@ -7,5 +7,22 @@ services:
       - redis_data:/data
     command: ["redis-server", "--save", "60", "1"]
 
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - SPAMDET_MODEL_DIR=/app/models/spamdet-mdeberta-onnx
+      - SPAMDET_REDIS_URL=redis://redis:6379/0
+      - SPAMDET_CONFIRMED_DATA_PATH=/app/data/review/confirmed.jsonl
+    volumes:
+      # model artifacts are gitignored/local-only (see docs/model.md) -
+      # mount whatever's been trained on the host rather than baking them
+      # into the image
+      - ./models:/app/models:ro
+      - ./data/review:/app/data/review
+    depends_on:
+      - redis
+
 volumes:
   redis_data:

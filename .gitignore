@@ -17,6 +17,10 @@ data/processed/*
 !data/processed/.gitkeep
 data/synthetic/generated/*
 !data/synthetic/generated/.gitkeep
+# human-reviewed messages can contain real (possibly personal) message
+# text - never commit, see docs/production_readiness.md
+data/review/*
+!data/review/.gitkeep
 
 .env
 

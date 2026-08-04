@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <title>spamdet - Inceleme Paneli</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; background: #0b0d12; color: #e6e6e6; }
+    h1 { font-size: 1.4rem; }
+    table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+    th, td { border: 1px solid #333; padding: 0.5rem 0.75rem; text-align: left; vertical-align: top; }
+    th { background: #16181f; }
+    tr:nth-child(even) { background: #12141a; }
+    .text-cell { max-width: 420px; white-space: pre-wrap; word-break: break-word; }
+    .confidence { font-variant-numeric: tabular-nums; }
+    form.actions { display: flex; gap: 0.5rem; align-items: center; }
+    select, button { padding: 0.3rem 0.5rem; }
+    button.approve { background: #1f7a3f; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    button.reject { background: #7a1f1f; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    .empty { color: #888; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Incelemede Bekleyen Mesajlar ({{ items|length }})</h1>
+
+  {% if items %}
+  <table>
+    <thead>
+      <tr>
+        <th>Mesaj</th>
+        <th>Tahmin Edilen Etiket</th>
+        <th>Guven Skoru</th>
+        <th>Islem</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td class="text-cell">{{ item.text }}</td>
+        <td>{{ item.label }}</td>
+        <td class="confidence">{{ "%.2f"|format(item.confidence) }}</td>
+        <td>
+          <form class="actions" method="post" action="/dashboard/review/{{ item.item_id }}">
+            <select name="corrected_label">
+              {% for label in labels %}
+              <option value="{{ label }}" {% if label == item.label %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit" name="decision" value="approve" class="approve">Onayla</button>
+            <button type="submit" name="decision" value="reject" class="reject">Reddet</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">Incelemede bekleyen mesaj yok.</p>
+  {% endif %}
+</body>
+</html>

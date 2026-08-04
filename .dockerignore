@@ -1,0 +1,12 @@
+data/raw/
+data/interim/
+data/processed/
+data/synthetic/generated/
+data/review/
+models/
+tests/
+.pytest_cache/
+__pycache__/
+*.egg-info/
+.git/
+.coverage

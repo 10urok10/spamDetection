@@ -56,6 +56,19 @@ real-world examples) and/or the split is changed to group by original seed
 before splitting - noted here rather than fixed now, since the Stage 2 goal
 was a working pipeline, not a tuned model.
 
+## Observed overconfidence (Stage 3 finding)
+
+Live-testing the Stage 3 API against real requests, the model turned out
+to be confidently "legitimate" (0.7-0.87) even on near-empty or nonsense
+input (`"Merhaba"`, `"tamam"`, `"1000 TL"`) - consistent with the
+train/test leakage caveat above (small, synthetic-heavy training data ->
+a model that's very sure of itself rather than well-calibrated). In
+practice this means the review queue's 0.4-0.6 confidence band rarely
+triggers with the current model; it's a real signal that recalibration
+(e.g. temperature scaling) or more diverse training data should be a
+priority before relying on the confidence score for anything
+safety-critical.
+
 ## Running it
 
 ```

@@ -1,8 +1,9 @@
 # spamdet
 
 Turkish spam / fraud / gambling-scam / phishing detection MVP. Multi-stage
-project; this README covers **Stage 1 (data + preprocessing)** and
-**Stage 2 (model training + outbreak detection)**.
+project; this README covers **Stage 1 (data + preprocessing)**,
+**Stage 2 (model training + outbreak detection)**, and **Stage 3
+(FastAPI gateway + review dashboard + Docker)**.
 
 ## Stage 1 scope
 
@@ -29,8 +30,23 @@ project; this README covers **Stage 1 (data + preprocessing)** and
   implemented vs. explicitly deferred (SBERT secondary layer, periodic
   HDBSCAN batch clustering)
 
-The FastAPI gateway and review dashboard are Stage 3, not part of this
-codebase yet.
+## Stage 3 scope
+
+- FastAPI gateway (`src/spamdet/api/`) wiring Stage 1 preprocessing ->
+  Stage 2 classifier -> Stage 2 outbreak detector into one `/classify`
+  endpoint, with confidence-band (0.4-0.6) routing to a Redis-backed
+  human review queue
+- Server-rendered review dashboard (`GET /dashboard`, no JS) - list
+  pending items, approve (optionally with a corrected label, which is
+  appended to `data/review/confirmed.jsonl` for future retraining) or
+  reject
+- Prometheus metrics at `GET /metrics` (message volume by label,
+  confidence distribution, review-queue and outbreak-alert counters)
+- `Dockerfile` + `docker-compose.yml` (`redis` + `api` services)
+- `docs/production_readiness.md` ("Uretime Gecis Notu", in Turkish):
+  KVKK/data retention, rough infra cost estimate, model drift/retraining
+  strategy, human-in-the-loop operations - documented, not implemented,
+  per the project's explicit MVP scope
 
 ## Setup
 
@@ -39,14 +55,14 @@ Requires a dedicated conda environment (Python 3.11):
 ```
 conda create -n spamdet python=3.11
 conda activate spamdet
-pip install -e ".[dev]"                # Stage 1 only
-pip install -e ".[dev,train,outbreak]" # Stage 1 + 2
+pip install -e ".[dev]"                     # Stage 1 only
+pip install -e ".[dev,train,outbreak,api]"  # everything
 ```
 
 Stage 2 also needs a CUDA-matched `torch` build (see `docs/model.md`) and
-`sentencepiece`, and a running Redis (`docker compose up -d redis`) for
-anything beyond the outbreak module's own (fully offline, `fakeredis`-based)
-tests.
+`sentencepiece`. Stage 2/3 need a running Redis (`docker compose up -d
+redis`) for anything beyond each module's own (fully offline,
+`fakeredis`-based) tests.
 
 Windows note: this project uses non-ASCII (Turkish) text throughout tests
 and data. Set `PYTHONIOENCODING=utf-8` in your shell before running
@@ -121,6 +137,31 @@ result = detector.ingest("msg-id-1", "Tebrikler! Bonus kazandiniz...")
 See `docs/outbreak.md` for the LSH band-width tuning rationale and what's
 deliberately not implemented yet.
 
+## Running the API
+
+Local (no Docker):
+
+```
+docker compose up -d redis      # dependency
+python scripts/run_api.py       # http://localhost:8000
+```
+
+Full stack (API + Redis) via Docker - requires `models/` to already exist
+locally (train first, see above; the compose file mounts it read-only):
+
+```
+docker compose up -d --build
+```
+
+Key endpoints: `POST /classify`, `GET /review/pending`, `POST
+/review/{item_id}/decide`, `GET /dashboard`, `GET /metrics`, `GET /health`.
+
+```
+curl -X POST http://localhost:8000/classify \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Tebrikler! Bonus kazandiniz, hemen tiklayin: bit.ly/x"}'
+```
+
 ## Project layout
 
 ```
@@ -147,6 +188,14 @@ src/spamdet/
     simhash.py                64-bit SimHash fingerprinting
     lsh.py                     RedisLSHIndex - band-based candidate lookup
     detector.py                 OutbreakDetector - ingest + near-duplicate check
+  api/
+    config.py                  env-var config (model dir, Redis URL, ...)
+    schemas.py                  Pydantic request/response models
+    pipeline.py                  ClassificationPipeline - the per-message flow
+    review_queue.py               Redis-backed human review queue
+    metrics.py                     Prometheus counters/histograms
+    app.py                          create_app() factory + all routes
+    templates/dashboard.html         server-rendered review dashboard
   merge.py                combines loader outputs into one deduplicated table
   build_dataset.py         scripts/build_dataset.py entry point
   generate_synthetic.py    scripts/generate_synthetic.py entry point
@@ -157,23 +206,33 @@ data/
   synthetic/
     seeds/       committed - hand-authored YAML seed examples
     generated/   gitignored - augment/adversarial script output
+  review/      gitignored - confirmed.jsonl (human-approved review items)
 models/        gitignored - train_model.py / export_onnx.py output
-docker-compose.yml   Redis service for the outbreak detection layer
+Dockerfile            api service image (CPU-only torch/onnxruntime)
+docker-compose.yml    redis + api services
 docs/
-  datasets.md          per-source download/column/license notes
-  licensing_notes.md   BerTurk-SpamSMS OpenRAIL-M warning - do not use it
-  model.md             Stage 2 model choice, GPU setup note, metrics caveat
-  outbreak.md          Stage 2 outbreak layer design + what's deferred
+  datasets.md              per-source download/column/license notes
+  licensing_notes.md       BerTurk-SpamSMS OpenRAIL-M warning - do not use it
+  model.md                 Stage 2 model choice, GPU setup note, metrics caveat
+  outbreak.md               Stage 2 outbreak layer design + what's deferred
+  production_readiness.md    Stage 3 "Uretime Gecis Notu" (Turkish)
 ```
 
-## Known limitations (by design, documented not solved in Stage 1)
+## Known limitations (by design, documented not solved)
 
+- **`url_tools.unshorten()` is not wired into `/classify`**: it's built,
+  tested (Stage 1), and SSRF-safe, but resolving redirect chains over the
+  network can take seconds - calling it synchronously in the classify
+  request path would make API latency depend on an attacker-controlled
+  server. `ClassificationPipeline` only extracts raw URLs; see its
+  docstring and `docs/production_readiness.md` for the deferred
+  async-enrichment alternative.
 - **SSRF guard DNS-rebinding TOCTOU**: `url_tools.unshorten()` validates
   each redirect hop's resolved IP before connecting, but there's a small
   window between that check and `requests`' own connection. Full
   protection requires routing outbound requests through an isolated
-  egress proxy/network - planned for Stage 3 (Dockerization); the
-  `proxies` parameter on `unshorten()` exists so that can be wired in
+  egress proxy/network - not built (see `docs/production_readiness.md`);
+  the `proxies` parameter on `unshorten()` exists so that can be wired in
   without changing call sites.
 - **Kaggle downloads are manual**: no `kaggle` API credential handling in
   code by default (the `datafetch` extra installs the `kaggle` CLI
