@@ -16,11 +16,16 @@ actual columns found and extend the loader's candidate list to match.
 - Language: Turkish, binary spam/normal
 - Place at: `data/raw/turkish_sms_collection/<file>.csv` (any CSV in that
   directory is picked up)
-- Expected columns: text-like (`Message`/`text`/`sms`/...), label-like
-  (`Group`/`label`/`class`/...) - see `loaders/turkish_sms_collection.py`
-  for the full candidate list
-- License/attribution: check the Kaggle dataset page at download time and
-  record the license here once confirmed
+- **Downloaded and confirmed (2026-08)**: `TurkishSMSCollection.csv`,
+  **semicolon-delimited** (not comma), CRLF line endings, columns
+  `Message;Group;GroupText` - `Group` is a numeric code (1/2) whose
+  meaning isn't self-evident, `GroupText` is the human-readable
+  `Spam`/`Normal` label the loader actually uses (prioritized over
+  `Group` in `LABEL_COLUMNS`). 4,737 rows loaded via `kaggle datasets
+  download`.
+- License/attribution: Kaggle CLI reports `License(s): unknown` - not
+  independently re-verified beyond that; treat as unresolved before any
+  wider distribution.
 
 ## turkishsms_ds
 
@@ -37,11 +42,18 @@ actual columns found and extend the loader's candidate list to match.
 
 - Source: Kaggle, `cuneytdemir/turkish-spam-dataset`
 - Language: Turkish, binary spam/legitimate email
-- Place at: `data/raw/turkish_spam_dataset/<file>.csv`
-- Expected columns: text-like (`text`/`email`/`message`/...), label-like
-  (`label`/`Category`/`class`/...) - see
-  `loaders/turkish_spam_dataset.py`
-- License/attribution: check the Kaggle dataset page at download time
+- Place at: `data/raw/turkish_spam_dataset/<file>.csv` or `.xlsx`
+- **Downloaded and confirmed (2026-08)**: the download contains both
+  `trspam.csv` and `trspam.xlsx`. **The `.csv` is malformed** - unescaped
+  multi-line quoted email bodies break the C parser (`Error tokenizing
+  data`). The `.xlsx` is clean but has no real header row (first data row
+  reads as columns) and one trailing all-blank footer row. The loader
+  prefers `.xlsx` when present (`build_dataset.py`'s `_find_first_file`)
+  and reads it by column position, dropping the blank-label footer row.
+  752 rows loaded (496 ham / ~329 spam before cleanup). Some rows contain
+  raw base64-encoded HTML email bodies (undecoded MIME content) - a
+  source-data quality issue left as-is, not decoded.
+- License/attribution: Kaggle CLI reports `License(s): unknown`.
 
 ## sms_spam_collection
 
@@ -51,6 +63,12 @@ actual columns found and extend the loader's candidate list to match.
 - Place at: `data/raw/sms_spam_collection/<file>.csv`
 - Handles both the common Kaggle mirror column naming (`v1`/`v2`) and the
   original headerless tab-separated UCI distribution as a fallback
+- **Downloaded and confirmed (2026-08)**: used the `uciml/sms-spam-collection-dataset`
+  Kaggle mirror (`spam.csv`, `v1`/`v2` columns as expected, 5,158 rows
+  after cleanup). Kaggle CLI reports `License(s): unknown` for this mirror
+  too - the original UCI/SMS Spam Collection dataset itself is commonly
+  cited as available for research use; verify the specific terms before
+  wider distribution.
 
 ## enron_spam
 

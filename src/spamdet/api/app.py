@@ -113,6 +113,10 @@ def create_app(*, classifier: SpamClassifier | None = None, redis_client=None) -
 
         return ReviewDecisionResponse(item_id=item_id, resolved=True, appended_to_training_data=appended)
 
+    @app.get("/demo", response_class=HTMLResponse)
+    def demo(request: Request) -> HTMLResponse:
+        return templates.TemplateResponse(request, "demo.html", {})
+
     @app.get("/dashboard", response_class=HTMLResponse)
     def dashboard(request: Request) -> HTMLResponse:
         review_queue: ReviewQueue = request.app.state.review_queue

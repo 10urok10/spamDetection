@@ -39,6 +39,26 @@ def test_build_loaders_enron_prefers_folder_layout_then_csv_fallback(tmp_path):
     assert len(records2) == 1
 
 
+def test_build_loaders_turkish_spam_dataset_prefers_xlsx_over_csv(tmp_path):
+    import pandas as pd
+
+    raw_dir = tmp_path / "raw"
+    tsd_dir = raw_dir / "turkish_spam_dataset"
+    tsd_dir.mkdir(parents=True)
+    # deliberately different content from the xlsx below, so the test
+    # fails loudly if the wrong file gets picked instead of merely erroring
+    (tsd_dir / "trspam.csv").write_text("text,label\nbu csv dosyasi kullanilmamali,legitimate\n", encoding="utf-8")
+    pd.DataFrame([["bedava kazan tiklayin", "spam"]], columns=["0.0", "0.0.1"]).to_excel(
+        tsd_dir / "trspam.xlsx", index=False
+    )
+
+    loaders = build_loaders(raw_dir, include_turkishsms_ds=False)
+    records = loaders["turkish_spam_dataset"]()
+    assert len(records) == 1
+    assert records[0].label.value == "spam"
+    assert records[0].text == "bedava kazan tiklayin"
+
+
 def test_main_returns_error_code_when_nothing_available(tmp_path, capsys):
     raw_dir = tmp_path / "raw"
     raw_dir.mkdir()

@@ -162,6 +162,12 @@ curl -X POST http://localhost:8000/classify \
   -d '{"text": "Tebrikler! Bonus kazandiniz, hemen tiklayin: bit.ly/x"}'
 ```
 
+**`GET /demo`** - a small interactive page (type a message, see the
+predicted category, per-category probability bars, and the
+homoglyph/review-queue/outbreak flags update live via `fetch`). Separate
+from `/dashboard` on purpose: `/dashboard` is the no-JS human-review tool,
+`/demo` is a JS-based classify-anything sandbox for trying the model out.
+
 ## Project layout
 
 ```

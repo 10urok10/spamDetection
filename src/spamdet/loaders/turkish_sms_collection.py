@@ -1,12 +1,31 @@
 from pathlib import Path
 
+import pandas as pd
+
 from ..schema import Label, Lang, Record
-from .base import find_column, read_csv_robust
+from .base import ColumnNotFoundError, find_column, read_csv_robust
 
 SOURCE_NAME = "turkish_sms_collection"
 
 TEXT_COLUMNS = ["Message", "message", "text", "Text", "sms", "SMS", "Mesaj", "mesaj", "icerik", "İçerik"]
-LABEL_COLUMNS = ["Group", "group", "label", "Label", "Grup", "class", "Class", "Etiket", "etiket", "Durum"]
+# GroupText ("Spam"/"Normal") takes priority over Group (numeric 1/2 codes,
+# real meaning not self-evident) - real file has both, prefer the
+# human-readable one so LABEL_MAP doesn't need dataset-version-specific
+# numeric-code guesses.
+LABEL_COLUMNS = [
+    "GroupText",
+    "grouptext",
+    "Group",
+    "group",
+    "label",
+    "Label",
+    "Grup",
+    "class",
+    "Class",
+    "Etiket",
+    "etiket",
+    "Durum",
+]
 
 LABEL_MAP = {
     "spam": Label.SPAM,
@@ -16,8 +35,24 @@ LABEL_MAP = {
 }
 
 
+def _read(path: str | Path) -> pd.DataFrame:
+    """The real onurkarasoy/turkish-sms-collection export turned out to be
+    semicolon-delimited (a common European-locale CSV convention), which
+    the comma-delimited default either mis-parses into one column or, more
+    often, trips the C parser's field-count check outright. Try comma
+    first (in case some mirror really is comma-delimited), fall back to
+    semicolon.
+    """
+    try:
+        df = read_csv_robust(path)
+        find_column(df, TEXT_COLUMNS, dataset_name=SOURCE_NAME)
+        return df
+    except (pd.errors.ParserError, ColumnNotFoundError):
+        return read_csv_robust(path, sep=";")
+
+
 def load(path: str | Path) -> list[Record]:
-    df = read_csv_robust(path)
+    df = _read(path)
     text_col = find_column(df, TEXT_COLUMNS, dataset_name=SOURCE_NAME)
     label_col = find_column(df, LABEL_COLUMNS, dataset_name=SOURCE_NAME)
 

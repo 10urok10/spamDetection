@@ -26,6 +26,20 @@ def _find_first_csv(directory: Path) -> Path | None:
     return csvs[0] if csvs else None
 
 
+def _find_first_file(directory: Path, *extensions: str) -> Path | None:
+    """Like _find_first_csv but checks extensions in priority order -
+    used where a source's .csv export turned out to be malformed and its
+    .xlsx sibling (also present in the same Kaggle download) is the
+    reliable one (see turkish_spam_dataset.py)."""
+    if not directory.is_dir():
+        return None
+    for ext in extensions:
+        matches = sorted(directory.glob(f"*.{ext}"))
+        if matches:
+            return matches[0]
+    return None
+
+
 def build_loaders(raw_dir: Path, *, include_turkishsms_ds: bool = True) -> dict[str, LoaderFn]:
     """Wire up one loader per source dataset found under ``raw_dir``.
     Sources whose raw files haven't been downloaded yet are skipped with
@@ -40,11 +54,15 @@ def build_loaders(raw_dir: Path, *, include_turkishsms_ds: bool = True) -> dict[
     else:
         print(f"[skip] turkish_sms_collection: no CSV found under {raw_dir / 'turkish_sms_collection'}")
 
-    tsd_csv = _find_first_csv(raw_dir / "turkish_spam_dataset")
-    if tsd_csv:
-        loaders["turkish_spam_dataset"] = lambda p=tsd_csv: turkish_spam_dataset.load(p)
+    # prefer .xlsx: the real cuneytdemir/turkish-spam-dataset .csv export is
+    # malformed (unescaped multi-line quoted email bodies breaking the
+    # tokenizer), the .xlsx in the same download is clean - see
+    # turkish_spam_dataset.py's _read_excel for the details.
+    tsd_file = _find_first_file(raw_dir / "turkish_spam_dataset", "xlsx", "csv")
+    if tsd_file:
+        loaders["turkish_spam_dataset"] = lambda p=tsd_file: turkish_spam_dataset.load(p)
     else:
-        print(f"[skip] turkish_spam_dataset: no CSV found under {raw_dir / 'turkish_spam_dataset'}")
+        print(f"[skip] turkish_spam_dataset: no CSV/XLSX found under {raw_dir / 'turkish_spam_dataset'}")
 
     ssc_csv = _find_first_csv(raw_dir / "sms_spam_collection")
     if ssc_csv:

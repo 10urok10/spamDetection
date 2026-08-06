@@ -106,6 +106,13 @@ def test_review_decide_unknown_item_returns_404(client):
     assert resp.status_code == 404
 
 
+def test_demo_page_renders(client):
+    resp = client.get("/demo")
+    assert resp.status_code == 200
+    assert "Siniflandir" in resp.text
+    assert "/classify" in resp.text
+
+
 def test_dashboard_renders_pending_items(client_with_borderline):
     client_with_borderline.post("/classify", json={"text": "belirsiz mesaj", "message_id": "m1"})
     resp = client_with_borderline.get("/dashboard")
