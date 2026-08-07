@@ -129,6 +129,34 @@ generation pass (hundreds, not dozens, of seeds per fine-grained
 category) to rebalance relative volume against the now much bigger
 binary-labeled classes.
 
+**Final update - resolved via real user-collected examples**: rather than
+(a)/(b) above, the actual fix ended up being targeted: the user supplied
+9 real SMS messages from their own phone (cargo tracking, a telecom KVKK
+disclosure, a subscription-cancellation confirmation, a benefit-card
+onboarding message, a satisfaction-survey invite, a reward-credit
+notification, an English OTP, and - deliberately kept as `spam` per the
+user's judgment call - a Mersis-numbered, opt-out-compliant marketing
+coupon). 5 of the 9 were misclassified `spam`. Adding all of them (minus
+the one correctly-already-`spam` coupon) as `legitimate` seeds and
+retraining fixed all 5 **and**, as a side effect, finally also fixed the
+long-standing URL-less-phishing case from the previous round (now 0.956
+confident and stable) - evidence that broadening `legitimate` example
+*diversity* (not just volume) was the actual bottleneck, not fine-grained
+class volume as hypothesized above. Full regression suite at this point:
+**19/19** real+synthetic test cases correct. This does not mean the
+whack-a-mole dynamic is solved in general - it means this specific round
+of it responded well to real (not synthetic) counterexamples; expect the
+same dynamic to resurface for new message styles not yet represented.
+
+**Product decision made along the way**: legitimate, regulated marketing
+(Mersis number + opt-out mechanism, e.g. a retailer coupon SMS) should
+classify as `spam`, not `legitimate` - confirmed explicitly by the user.
+So this system's `spam` label means "unsolicited bulk/promotional
+messaging," not "fraudulent" - fraud-specific intent is what
+`gambling_scam`/`phishing`/`financial_urgency` are for. Worth remembering
+if `spam` vs `legitimate` accuracy is evaluated against a different
+definition later.
+
 ## Running it
 
 ```
