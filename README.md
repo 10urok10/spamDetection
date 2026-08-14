@@ -2,8 +2,9 @@
 
 Turkish spam / fraud / gambling-scam / phishing detection MVP. Multi-stage
 project; this README covers **Stage 1 (data + preprocessing)**,
-**Stage 2 (model training + outbreak detection)**, and **Stage 3
-(FastAPI gateway + review dashboard + Docker)**.
+**Stage 2 (model training + outbreak detection)**, **Stage 3
+(FastAPI gateway + review dashboard + Docker)**, and **legitimate-message
+subtype classification (otp/bilgilendirme/reklam)**.
 
 ## Stage 1 scope
 
@@ -47,6 +48,26 @@ project; this README covers **Stage 1 (data + preprocessing)**,
   KVKK/data retention, rough infra cost estimate, model drift/retraining
   strategy, human-in-the-loop operations - documented, not implemented,
   per the project's explicit MVP scope
+
+## Legitimate-message subtype scope (otp / bilgilendirme / reklam)
+
+SMS-operator compliance use case: telling apart OTP, informational, and
+advertisement traffic within whatever the main model already calls
+`legitimate`, so advertisement content can be checked against the right
+(separately KVKK-consented) sending channel - not judging whether an ad
+was sent with proper consent, only whether a message *is* one.
+
+- Rule (`src/spamdet/subtype/rules.py`): OTP = digit code + disclaimer
+  phrase, deterministic, no training data.
+- Lightweight ML (`ad_info_classifier.py`): TF-IDF + logistic regression
+  for reklam-vs-bilgilendirme on whatever the OTP rule didn't catch -
+  deliberately not a transformer fine-tune (see `docs/subtype.md` for
+  why, and the real evaluation numbers before committing to that
+  choice).
+- **A Mersis-number/opt-out-phrase rule was deliberately *not* built**:
+  a real user-supplied message (a genuine customer-satisfaction survey)
+  contains both markers without being an ad - see `docs/subtype.md` for
+  the full finding. Those signals are left as ML features instead.
 
 ## Setup
 
@@ -137,6 +158,15 @@ result = detector.ingest("msg-id-1", "Tebrikler! Bonus kazandiniz...")
 See `docs/outbreak.md` for the LSH band-width tuning rationale and what's
 deliberately not implemented yet.
 
+## Training the subtype classifier
+
+```
+python -m spamdet.subtype.train    # -> models/subtype-ad-info.joblib
+```
+
+Optional - `/classify` simply omits the `subtype` field if this hasn't
+been run yet. See `docs/subtype.md`.
+
 ## Running the API
 
 Local (no Docker):
@@ -194,6 +224,11 @@ src/spamdet/
     simhash.py                64-bit SimHash fingerprinting
     lsh.py                     RedisLSHIndex - band-based candidate lookup
     detector.py                 OutbreakDetector - ingest + near-duplicate check
+  subtype/
+    rules.py                  OTP rule (digit code + disclaimer phrase)
+    ad_info_classifier.py      AdInfoClassifier - TF-IDF + logistic regression
+    detector.py                  SubtypeDetector - rule first, ML fallback
+    train.py                      python -m spamdet.subtype.train entry point
   api/
     config.py                  env-var config (model dir, Redis URL, ...)
     schemas.py                  Pydantic request/response models
@@ -213,7 +248,7 @@ data/
     seeds/       committed - hand-authored YAML seed examples
     generated/   gitignored - augment/adversarial script output
   review/      gitignored - confirmed.jsonl (human-approved review items)
-models/        gitignored - train_model.py / export_onnx.py output
+models/        gitignored - train_model.py / export_onnx.py / subtype.train output
 Dockerfile            api service image (CPU-only torch/onnxruntime)
 docker-compose.yml    redis + api services
 docs/
@@ -222,6 +257,8 @@ docs/
   model.md                 Stage 2 model choice, GPU setup note, metrics caveat
   outbreak.md               Stage 2 outbreak layer design + what's deferred
   production_readiness.md    Stage 3 "Uretime Gecis Notu" (Turkish)
+  subtype.md                  otp/bilgilendirme/reklam design, the Mersis
+                               finding, and real evaluation numbers
 ```
 
 ## Known limitations (by design, documented not solved)

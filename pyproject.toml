@@ -53,6 +53,12 @@ api = [
     "jinja2>=3.1",
     "python-multipart>=0.0.9",
     "prometheus-client>=0.20",
+    # api/app.py loads the legitimate-message subtype classifier
+    # (spamdet.subtype), a scikit-learn Pipeline - listed here too (not
+    # just under `train`) so `pip install -e ".[api]"` alone is enough
+    # to serve it, without needing the much heavier `train` extra.
+    "scikit-learn>=1.4",
+    "joblib>=1.3",
 ]
 
 [tool.setuptools.packages.find]

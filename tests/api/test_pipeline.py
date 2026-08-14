@@ -4,6 +4,7 @@ import pytest
 from spamdet.api.pipeline import ClassificationPipeline, needs_human_review
 from spamdet.model.inference import PredictionResult
 from spamdet.outbreak.detector import OutbreakDetector
+from spamdet.subtype.detector import SubtypeResult
 
 
 class _FakeClassifier:
@@ -83,3 +84,87 @@ def test_pipeline_with_outbreak_detector_flags_near_duplicates():
     result = pipeline.process("msg-2", "Bonus kazandiniz hemen tiklayin bit.ly/y")
     assert result.outbreak.is_outbreak_candidate is True
     assert "msg-1" in result.outbreak.similar_message_ids
+
+
+def test_pipeline_without_subtype_detector_leaves_subtype_none():
+    fake_result = PredictionResult(label="legitimate", confidence=0.9, probabilities={"legitimate": 0.9})
+    pipeline = ClassificationPipeline(_FakeClassifier(fake_result))
+    result = pipeline.process("msg-1", "Kargonuz dagitima cikmistir.")
+    assert result.subtype is None
+
+
+class _FakeSubtypeDetector:
+    def __init__(self, result: SubtypeResult):
+        self._result = result
+        self.calls: list[str] = []
+
+    def detect(self, text: str) -> SubtypeResult:
+        self.calls.append(text)
+        return self._result
+
+
+def test_pipeline_never_checks_subtype_for_fraud_labels():
+    fake_result = PredictionResult(label="phishing", confidence=0.9, probabilities={"phishing": 0.9})
+    fake_subtype = _FakeSubtypeDetector(SubtypeResult(subtype="reklam", source="model", reklam_probability=0.99))
+    pipeline = ClassificationPipeline(_FakeClassifier(fake_result), subtype_detector=fake_subtype)
+
+    result = pipeline.process("msg-1", "test")
+    assert result.subtype is None
+    assert result.prediction.label == "phishing"
+    assert fake_subtype.calls == []
+
+
+def test_pipeline_spam_with_low_confidence_reklam_stays_spam():
+    fake_result = PredictionResult(label="spam", confidence=0.9, probabilities={"spam": 0.9, "legitimate": 0.1})
+    fake_subtype = _FakeSubtypeDetector(SubtypeResult(subtype="reklam", source="model", reklam_probability=0.35))
+    pipeline = ClassificationPipeline(_FakeClassifier(fake_result), subtype_detector=fake_subtype)
+
+    result = pipeline.process("msg-1", "test")
+    assert result.prediction.label == "spam"
+    assert result.subtype is None
+    assert fake_subtype.calls == ["test"]  # checked, just not confident enough to override
+
+
+def test_pipeline_spam_with_high_confidence_reklam_overrides_to_legitimate():
+    fake_result = PredictionResult(label="spam", confidence=0.9, probabilities={"spam": 0.9, "legitimate": 0.1})
+    fake_subtype = _FakeSubtypeDetector(SubtypeResult(subtype="reklam", source="model", reklam_probability=0.9))
+    pipeline = ClassificationPipeline(_FakeClassifier(fake_result), subtype_detector=fake_subtype)
+
+    result = pipeline.process("msg-1", "Bu hafta magazamizda yuzde 40 indirim var!")
+    assert result.prediction.label == "legitimate"
+    assert result.prediction.confidence == 0.1  # Stage A's own P(legitimate), not fabricated
+    assert result.prediction.probabilities == {"spam": 0.9, "legitimate": 0.1}  # unchanged, for audit
+    assert result.subtype.subtype == "reklam"
+    assert result.subtype.source == "model"
+
+
+def test_pipeline_spam_with_otp_match_always_overrides():
+    fake_result = PredictionResult(label="spam", confidence=0.9, probabilities={"spam": 0.9, "legitimate": 0.1})
+    fake_subtype = _FakeSubtypeDetector(SubtypeResult(subtype="otp", source="rule_otp", reklam_probability=None))
+    pipeline = ClassificationPipeline(_FakeClassifier(fake_result), subtype_detector=fake_subtype)
+
+    result = pipeline.process("msg-1", "Kodunuz: 123456. Kimseyle paylasmayin.")
+    assert result.prediction.label == "legitimate"
+    assert result.subtype.subtype == "otp"
+
+
+def test_pipeline_spam_with_bilgilendirme_never_overrides():
+    fake_result = PredictionResult(label="spam", confidence=0.9, probabilities={"spam": 0.9, "legitimate": 0.1})
+    fake_subtype = _FakeSubtypeDetector(
+        SubtypeResult(subtype="bilgilendirme", source="model", reklam_probability=0.05)
+    )
+    pipeline = ClassificationPipeline(_FakeClassifier(fake_result), subtype_detector=fake_subtype)
+
+    result = pipeline.process("msg-1", "test")
+    assert result.prediction.label == "spam"
+    assert result.subtype is None
+
+
+def test_pipeline_runs_subtype_detector_when_label_is_legitimate():
+    fake_result = PredictionResult(label="legitimate", confidence=0.9, probabilities={"legitimate": 0.9})
+    fake_subtype = _FakeSubtypeDetector(SubtypeResult(subtype="bilgilendirme", source="model", reklam_probability=0.1))
+    pipeline = ClassificationPipeline(_FakeClassifier(fake_result), subtype_detector=fake_subtype)
+
+    result = pipeline.process("msg-1", "Kargonuz dagitima cikmistir.")
+    assert result.subtype.subtype == "bilgilendirme"
+    assert fake_subtype.calls == ["Kargonuz dagitima cikmistir."]

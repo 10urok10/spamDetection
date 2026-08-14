@@ -1,47 +1,119 @@
 category: legitimate
 examples:
   - text: "Yarin saat 15:00'te toplantimiz var, unutma."
+    subtype: bilgilendirme
   - text: "Aksam yemege geliyor musun, annem soruyor."
+    subtype: bilgilendirme
   - text: "Proje teslim tarihini uzattilar, yeni tarih cuma."
+    subtype: bilgilendirme
   - text: "Bugun hava cok guzel, parka gidelim mi?"
+    subtype: bilgilendirme
   - text: "Dogum gunun kutlu olsun, iyi ki varsin!"
+    subtype: bilgilendirme
   - text: "Yarinki sinav saat kacta basliyor?"
+    subtype: bilgilendirme
   - text: "Kitabi okudum, cok begendim, sana da oneririm."
+    subtype: bilgilendirme
   - text: "Kargonuz dagitima cikmistir. Takip icin: yurticikargo.com/takip/123456"
     notes: "real cargo tracking notification - must NOT be flagged just for containing a link"
+    subtype: bilgilendirme
   - text: "Hesabiniza 1.500,00 TL EFT girisi gerceklesmistir. Bakiye: 3.240,00 TL. Garanti BBVA"
     notes: "real bank transaction notification - must NOT be flagged for money+account keywords"
+    subtype: bilgilendirme
   - text: "Tek kullanimlik sifreniz: 482910. Bu kodu kimseyle paylasmayin. Garanti BBVA"
     notes: "real OTP message - structurally similar to phishing OTP-harvesting but is the genuine bank-issued code"
+    subtype: otp
   - text: "Faturaniz hazir, tutar: 245,60 TL, son odeme tarihi 15.08.2026. Turk Telekom"
+    subtype: bilgilendirme
   - text: "Siparisiniz kargoya verildi, tahmini teslimat 2 gun icinde. Trendyol"
+    subtype: bilgilendirme
   - text: "Kredi karti ekstreniz hazirlandi, borcunuz 1.240 TL, son odeme 20.08.2026"
+    subtype: bilgilendirme
   - text: "Randevunuz 05.08.2026 saat 10:30 icin onaylanmistir. Acibadem Hastanesi"
+    subtype: bilgilendirme
   - text: "Bu ay 250 dakika, 500 SMS kullandiniz. Kalan kullanim: 750 dakika. Turkcell"
+    subtype: bilgilendirme
   - text: "PTT Kargo: Gonderiniz teslim edilmistir. Teslim alan: Ali Y."
+    subtype: bilgilendirme
   - text: "Is Bankam mobil uygulamasindan yaptiginiz 350 TL'lik islem onaylandi."
+    subtype: bilgilendirme
   - text: "Su faturaniz otomatik odeme talimatiniz geregi hesabinizdan tahsil edilmistir."
+    subtype: bilgilendirme
   - text: "Yarin kargo teslim edilecek, evde olur musun?"
+    subtype: bilgilendirme
   - text: "Toplanti linki: meet.google.com/abc-defg-hij saat 14:00'te baglaniyoruz."
     notes: "legit meeting link containing a shortened-looking URL - must not be flagged as suspicious"
+    subtype: bilgilendirme
   - text: "Sayin Abonemiz, 800112233440 no'lu sozlesme hesabiniza ait 17/08/2026 son odeme tarihli ilgili donem tuketim bedeli 128,60 TL olup, 64,77 TL'lik devlet destegi sonrasinda odenmesi gereken fatura tutari 60,00 TL'dir. Odemelerinizi anlasmali bankalar ve PTT subelerinden yapabilirsiniz. Faturanizi goruntulemek icin: earsiv-portal.com.tr/goruntule?ref=440921 AKSA DOGALGAZ"
     notes: "real utility bill (natural gas) e-invoice notification - formal tone + account number + link, must NOT be flagged as phishing just because it shares that surface pattern"
+    subtype: bilgilendirme
   - text: "GUVENLIGINIZ ICIN KIMSEYLE PAYLASMAYINIZ! Hizli Giris sifreniz 741852 ile uygulamaya giris yapabilirsiniz. Referans: A8K2X"
     notes: "real app quick-login OTP - the 'GUVENLIGINIZ ICIN KIMSEYLE PAYLASMAYINIZ' disclaimer is itself a standard legitimate security phrase used by real banks/apps, not a phishing tell"
+    subtype: otp
   - text: "Elektrik faturaniz hazirlandi. Bu donem tuketiminiz 145 kWh, odenecek tutar 312,40 TL, son odeme 22.08.2026. Faturanizi goruntulemek icin: e-fatura-goruntule.com.tr/xyz789"
+    subtype: bilgilendirme
   - text: "Dogrulama kodunuz: 559214. Bu kodu kimseyle paylasmayiniz, sadece uygulama icinde kullaniniz."
+    subtype: otp
   - text: "Su abonelik numaraniza ait bu ayki tuketim bedeliniz 89,50 TL olarak hesaplanmistir, otomatik odeme talimatiniz geregi tahsil edilecektir."
+    subtype: bilgilendirme
   - text: "WTS0303142395 nolu siparisiniz HepsiJETe ulasmis olup tahmini olarak 29.09.2026 tarihinde teslim edilecektir. Teslimatinizi takip etmek icin: hpj.im/gm0fzrtj"
     notes: "real cargo tracking, misclassified spam (0.74) before this fix - model had too few cargo-tracking examples using this exact phrasing"
+    subtype: bilgilendirme
   - text: "Degerli musterimiz, Vodafone Elektronik Para ve Odeme Hizmetleri A.S. Uye Aydinlatma Metni guncellenmistir. Kisisel verilerinizin islenmesine iliskin guncel metne asagidaki baglantidan ulasabilirsiniz: vftr.co/vfpay-aydinlatma"
     notes: "real KVKK/legal disclosure notice from a telecom operator - misclassified spam (0.52) before this fix, a second real-world instance of the same URL-less-formal-notice blind spot"
+    subtype: bilgilendirme
   - text: "VDAS aboneliginiz talebiniz uzerine iptal edilmistir. Odemesini yapmis oldugunuz doneme ait faydalardan ilgili tarihe kadar yararlanmaya devam edebilirsiniz."
     notes: "real subscription cancellation confirmation - misclassified spam (0.63) before this fix"
+    subtype: bilgilendirme
   - text: "Pluxee dunyasina hos geldin! Restaurant Pass Yemek Kartin tanimlandi. Hemen Pluxee Turkiye mobil uygulamasini indir ve kullanmaya basla! bit.ly/pluxee_mobil"
     notes: "real service onboarding/welcome message confirming a benefit card assignment - misclassified spam (0.92) before this fix, model had no 'hos geldin' onboarding examples at all"
+    subtype: bilgilendirme
   - text: "Degerli yolcumuz, ne dusundugunuzu onemsiyor, geri bildirimlerinizi alarak size daha iyi hizmet vermek icin calisiyoruz. Bizimle yaptiginiz son yolculugu degerlendirmek icin tiklayiniz! SMS almak istemiyorsaniz RET yazip 6235e SMS gonderebilirsiniz."
-    notes: "real customer satisfaction survey invitation with opt-out - misclassified spam (0.94) before this fix"
+    notes: "real customer satisfaction survey invitation with opt-out - misclassified spam (0.94) before this fix. IMPORTANT: this is a hard negative for the ad/info subtype classifier - it contains an opt-out phrase (RET yaz) just like real ads do, but it is NOT an ad (it's a survey invite). Do not let a rule trigger on opt-out phrases alone; this example is why."
+    subtype: bilgilendirme
   - text: "Hediye Carkindan kazandiginiz 1 gun gecerli 1 GB internet paketiniz hesabiniza yuklenmistir. Gule gule kullanin!"
     notes: "real operator reward-credit confirmation (won from a promotional gift wheel, but this specific message is the genuine credit notification, not the promotion itself) - misclassified spam (0.92/0.95) in two earlier rounds, still wrong until this fix"
+    subtype: bilgilendirme
   - text: "123456 is your Huawei verification code to register HUAWEI ID."
     notes: "English OTP - project scope is Turkish-primary so English coverage is thin; the same message without the numeric code prefix was misclassified spam (0.71)"
+    subtype: otp
+  - text: "Bu hafta magazamizda tum urunlerde yuzde 40'a varan indirim var, kacirmayin!"
+    subtype: reklam
+    notes: "fuzzy-signal ad (no Mersis number, promotional tone only) - ad/info classifier training data"
+  - text: "Sana ozel 100 TL indirim kuponu tanimlandi, bugun kullan kazanc elde et."
+    subtype: reklam
+  - text: "Yeni sezon koleksiyonumuz magazalarda! Ilk alisverisinize yuzde 20 indirim."
+    subtype: reklam
+  - text: "Kis kampanyamiz basladi, secili urunlerde 2 al 1 ode firsati seni bekliyor."
+    subtype: reklam
+  - text: "Uyelere ozel: bu hafta sonuna kadar tum kahvelerde yuzde 25 indirim."
+    subtype: reklam
+  - text: "Yaz sezonu icin ozel firsat! Tatil paketlerinde erken rezervasyon indirimi basladi."
+    subtype: reklam
+  - text: "3 ay taksitle, faizsiz odeme secenegiyle yeni telefon sahibi olma zamani."
+    subtype: reklam
+  - text: "Sadakat puanlarinizla bu hafta hediye kazanma sansiniz var, hemen kullanin."
+    subtype: reklam
+  - text: "Kredi kartiniza ozel: secili marketlerde yuzde 15 puan kazanma firsati."
+    subtype: reklam
+  - text: "Yeni uye olan herkese ilk siparişte 50 TL indirim! Hemen kayit olun."
+    subtype: reklam
+  - text: "Dogum gunune ozel! Sana ozel indirim kodun hesabina tanimlandi, kullanmadan kacirma."
+    subtype: reklam
+  - text: "Bu ay sigorta yenilemede yuzde 30'a varan avantaj sizi bekliyor, hemen ariyoruz."
+    subtype: reklam
+  - text: "Yaz aylarina ozel klima kampanyamiz basladi, ucretsiz kurulum firsatini kacirma."
+    subtype: reklam
+  - text: "Sepetindeki urunler seni bekliyor, simdi tamamla ekstra yuzde 10 indirim kazan."
+    subtype: reklam
+  - text: "Yilbasina ozel cift puan kazanma firsati! Alisverislerinde iki kati puan biriktir."
+    subtype: reklam
+  - text: "Spor salonu uyeligi bu ay yuzde 50 indirimli, ilk hafta ucretsiz deneme firsati var."
+    subtype: reklam
+  - text: "Yeni menumuzde secili urunlerde 1 al 1 bedava kampanyasi basladi."
+    subtype: reklam
+  - text: "Emeklilere ozel bankacilik paketimizle yuksek faiz firsatini kacirmayin."
+    subtype: reklam
+  - text: "Apple iPhone icin 1250 TL kuponun var. Aklinda telefonunu yenileme dusuncesi varsa, simdi tam zamani. Sinirli sure gecerli sana ozel hediyeni simdi kullan. Ret icin HBSMS yaz 3172ye ilet. Mersis:0265017991000011"
+    notes: "real regulated marketing coupon (Mersis + opt-out) - confirmed by user as reklam, not spam. Kept here WITH its Mersis number so it also serves as a positive test case for the rule-based Mersis detector, not just the ML classifier."
+    subtype: reklam

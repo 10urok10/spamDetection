@@ -9,8 +9,10 @@ from fastapi.templating import Jinja2Templates
 from ..model.inference import SpamClassifier
 from ..model.labels import LABELS
 from ..outbreak.detector import OutbreakDetector
+from ..subtype.ad_info_classifier import AdInfoClassifier
+from ..subtype.detector import SubtypeDetector
 from . import metrics
-from .config import get_confirmed_data_path, get_model_dir, get_redis_url
+from .config import get_confirmed_data_path, get_model_dir, get_redis_url, get_subtype_model_path
 from .pipeline import ClassificationPipeline
 from .review_queue import ReviewQueue, append_confirmed_record
 from .schemas import (
@@ -20,16 +22,27 @@ from .schemas import (
     ReviewDecisionRequest,
     ReviewDecisionResponse,
     ReviewItemResponse,
+    SubtypeInfo,
 )
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 
+_UNSET = object()  # distinguishes "not passed -> auto-load" from "explicitly None -> disabled"
 
-def create_app(*, classifier: SpamClassifier | None = None, redis_client=None) -> FastAPI:
-    """Build the spamdet FastAPI app. ``classifier``/``redis_client`` are
-    injectable so tests (and any embedding code) can supply fakes; when
-    omitted, the lifespan handler constructs real ones from env vars
-    (see api/config.py) on startup.
+
+def create_app(
+    *,
+    classifier: SpamClassifier | None = None,
+    redis_client=None,
+    subtype_detector: SubtypeDetector | None = _UNSET,  # type: ignore[assignment]
+) -> FastAPI:
+    """Build the spamdet FastAPI app. ``classifier``/``redis_client``/
+    ``subtype_detector`` are injectable so tests (and any embedding code)
+    can supply fakes; when omitted, the lifespan handler constructs real
+    ones from env vars (see api/config.py) on startup. Passing
+    ``subtype_detector=None`` explicitly disables subtype detection
+    (rather than triggering the auto-load) - tests use this to stay
+    decoupled from whatever subtype model happens to exist on disk.
     """
 
     @asynccontextmanager
@@ -42,7 +55,24 @@ def create_app(*, classifier: SpamClassifier | None = None, redis_client=None) -
             app.state.redis_client = redis_lib.Redis.from_url(get_redis_url())
         app.state.outbreak_detector = OutbreakDetector(app.state.redis_client)
         app.state.review_queue = ReviewQueue(app.state.redis_client)
-        app.state.pipeline = ClassificationPipeline(app.state.classifier, app.state.outbreak_detector)
+
+        if subtype_detector is not _UNSET:
+            app.state.subtype_detector = subtype_detector
+        else:
+            app.state.subtype_detector = None
+            subtype_model_path = get_subtype_model_path()
+            if subtype_model_path.exists():
+                app.state.subtype_detector = SubtypeDetector(AdInfoClassifier.load(subtype_model_path))
+            else:
+                # Graceful degradation, same pattern as build_dataset.py's
+                # missing-source skips: /classify still works, just
+                # without a `subtype` field, until the model is trained
+                # (python -m spamdet.subtype.train).
+                print(f"[warn] subtype model not found at {subtype_model_path}; /classify will omit `subtype`")
+
+        app.state.pipeline = ClassificationPipeline(
+            app.state.classifier, app.state.outbreak_detector, app.state.subtype_detector
+        )
         yield
 
     app = FastAPI(title="spamdet API", version="0.1.0", lifespan=lifespan)
@@ -90,6 +120,15 @@ def create_app(*, classifier: SpamClassifier | None = None, redis_client=None) -
             outbreak=OutbreakInfo(
                 is_outbreak_candidate=is_outbreak,
                 similar_message_ids=result.outbreak.similar_message_ids if result.outbreak else [],
+            ),
+            subtype=(
+                SubtypeInfo(
+                    subtype=result.subtype.subtype,
+                    source=result.subtype.source,
+                    reklam_probability=result.subtype.reklam_probability,
+                )
+                if result.subtype
+                else None
             ),
         )
 

@@ -113,18 +113,39 @@ subpackage and can be exercised independently:**
    the real ones the lifespan handler builds from `api/config.py`'s
    env-var lookups.
 
-**Label taxonomy and what `spam` means**: five labels —
+**Label taxonomy and what `spam` means**: five top-level labels —
 `legitimate, spam, gambling_scam, phishing, financial_urgency`
 (`model/labels.py`, fixed order = fixed integer ids everywhere). The
 public datasets are binary (spam/ham) and only ever produce
 `legitimate`/`spam`; the three fraud subtypes exist exclusively in the
-synthetic seed data. **`spam` means "unsolicited bulk/promotional
-messaging," not "fraudulent"** — a legitimate, regulated marketing SMS
-(Mersis number, opt-out mechanism, real retailer) is intentionally
-labeled `spam` here, confirmed as the intended product behavior (see
-`docs/model.md`'s final section). There is no synthetic `spam` seed file —
-that label only ever comes from the public datasets. Fraud intent
-specifically is what the other three labels are for.
+synthetic seed data. There is no synthetic `spam` seed file — that label
+only ever comes from the public datasets. Fraud intent specifically is
+what the other three labels are for.
+
+**Advertising messages are `legitimate`, not `spam`** — this reversed
+partway through the project (an earlier round had them as `spam`; see
+git history on `docs/model.md` for the "hepsiburada kuponu" example that
+prompted the reversal). A real, identifiable, regulated marketing SMS
+(Mersis number, opt-out mechanism) is a `legitimate` message whose
+*subtype* is `reklam` — see the subtype system below. Don't move ad-like
+text back to top-level `spam` without re-reading why.
+
+**Legitimate-message subtypes** (`subtype/`, separate from the five
+top-level labels above): an SMS-operator compliance layer that further
+splits whatever the top-level model calls `legitimate` into `otp` /
+`bilgilendirme` (informational) / `reklam` (advertisement) — built so ad
+content can be checked against the right (separately KVKK-consented)
+sending channel. `otp` is a deterministic regex rule
+(`subtype/rules.py`); `reklam` vs `bilgilendirme` is a lightweight
+TF-IDF + logistic-regression classifier (`subtype/ad_info_classifier.py`),
+deliberately not another transformer fine-tune — evaluate the cheap
+option first, escalate only if it underperforms (see `docs/subtype.md`).
+**No Mersis-number/opt-out-phrase rule exists for `reklam`** — a real
+user-supplied customer-satisfaction-survey message contains both markers
+without being an ad, disproving that shortcut; those signals are ML
+features, not a hard-coded trigger. `spam`/fraud-subtype messages never
+get a subtype — only `legitimate` ones do. This whole layer runs
+strictly *after* the top-level model and never retrains or touches it.
 
 **Deliberately-not-built, documented instead of coded** (don't
 "fix" these without re-reading why first): URL unshortening
