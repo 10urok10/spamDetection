@@ -12,7 +12,7 @@ def test_loads_from_csv(tmp_path):
     assert len(records) == 2
     assert records[0].label is Label.SPAM
     assert records[0].lang is Lang.EN
-    assert records[1].label is Label.LEGITIMATE
+    assert records[1].label is Label.BILGILENDIRME
 
 
 def test_loads_from_ham_spam_folder_layout(tmp_path):
@@ -26,7 +26,7 @@ def test_loads_from_ham_spam_folder_layout(tmp_path):
     records = loader.load(tmp_path)
     labels = {r.text: r.label for r in records}
     assert labels["Buy cheap meds now"] is Label.SPAM
-    assert labels["Meeting moved to 3pm"] is Label.LEGITIMATE
+    assert labels["Meeting moved to 3pm"] is Label.BILGILENDIRME
 
 
 def test_raises_on_directory_without_ham_spam_subfolders(tmp_path):

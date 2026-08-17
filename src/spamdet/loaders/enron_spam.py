@@ -8,9 +8,12 @@ SOURCE_NAME = "enron_spam"
 TEXT_COLUMNS = ["text", "Text", "message", "Message", "body", "Body", "email"]
 LABEL_COLUMNS = ["label", "Label", "class", "Class", "Category", "category"]
 
-LABEL_MAP = {"spam": Label.SPAM, "ham": Label.LEGITIMATE, "legitimate": Label.LEGITIMATE}
+# "ham" doesn't tell us otp/reklam/bilgilendirme, so it maps to
+# bilgilendirme as the general "not spam, informational" catch-all (see
+# docs/model.md)
+LABEL_MAP = {"spam": Label.SPAM, "ham": Label.BILGILENDIRME, "legitimate": Label.BILGILENDIRME}
 
-FOLDER_LABEL_MAP = {"spam": Label.SPAM, "ham": Label.LEGITIMATE}
+FOLDER_LABEL_MAP = {"spam": Label.SPAM, "ham": Label.BILGILENDIRME}
 
 
 def load(path: str | Path) -> list[Record]:

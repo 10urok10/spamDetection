@@ -17,11 +17,10 @@
     --border:         rgba(11,11,11,0.10);
     --good:           #0ca30c;
 
-    --cat-legitimate:       #2a78d6;
-    --cat-spam:             #eb6834;
-    --cat-gambling_scam:    #1baf7a;
-    --cat-phishing:         #eda100;
-    --cat-financial_urgency:#e87ba4;
+    --cat-otp:            #2a78d6;
+    --cat-bilgilendirme:  #1a9c63;
+    --cat-reklam:         #c9760a;
+    --cat-spam:           #d6362a;
   }
   @media (prefers-color-scheme: dark) {
     :root:where(:not([data-theme="light"])) .viz-root {
@@ -36,11 +35,10 @@
       --border:         rgba(255,255,255,0.10);
       --good:           #0ca30c;
 
-      --cat-legitimate:       #3987e5;
-      --cat-spam:             #d95926;
-      --cat-gambling_scam:    #199e70;
-      --cat-phishing:         #c98500;
-      --cat-financial_urgency:#d55181;
+      --cat-otp:            #3987e5;
+      --cat-bilgilendirme:  #22b374;
+      --cat-reklam:         #dd8b2e;
+      --cat-spam:           #e5453a;
     }
   }
   :root[data-theme="dark"] .viz-root {
@@ -55,11 +53,10 @@
     --border:         rgba(255,255,255,0.10);
     --good:           #0ca30c;
 
-    --cat-legitimate:       #3987e5;
-    --cat-spam:             #d95926;
-    --cat-gambling_scam:    #199e70;
-    --cat-phishing:         #c98500;
-    --cat-financial_urgency:#d55181;
+    --cat-otp:            #3987e5;
+    --cat-bilgilendirme:  #22b374;
+    --cat-reklam:         #dd8b2e;
+    --cat-spam:           #e5453a;
   }
 
   * { box-sizing: border-box; }
@@ -93,7 +90,7 @@
     font-family: inherit;
     font-size: 0.95rem;
   }
-  textarea:focus { outline: 2px solid var(--cat-legitimate); outline-offset: 1px; }
+  textarea:focus { outline: 2px solid var(--cat-otp); outline-offset: 1px; }
 
   .examples { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.75rem; }
   .example-btn, .submit-btn {
@@ -109,7 +106,7 @@
   .example-btn:hover { color: var(--text-primary); }
   .submit-row { display: flex; justify-content: flex-end; margin-top: 0.9rem; }
   .submit-btn {
-    background: var(--cat-legitimate);
+    background: var(--cat-otp);
     color: white;
     border: none;
     font-weight: 600;
@@ -126,15 +123,6 @@
     color: white;
   }
   .hero-conf { font-variant-numeric: tabular-nums; color: var(--text-secondary); font-size: 0.95rem; }
-  .subtype-badge {
-    font-size: 0.8rem;
-    padding: 0.2rem 0.55rem;
-    border-radius: 999px;
-    border: 1px solid var(--border);
-    color: var(--text-primary);
-    background: var(--gridline);
-  }
-  .subtype-source { color: var(--text-muted); font-size: 0.75rem; }
 
   .bar-row { display: grid; grid-template-columns: 150px 1fr 52px; align-items: center; gap: 0.6rem; margin-top: 0.55rem; }
   .bar-label { font-size: 0.85rem; color: var(--text-primary); }
@@ -166,16 +154,17 @@
 <div class="viz-root">
   <div class="wrap">
     <h1>spamdet - Canli Siniflandirma Testi</h1>
-    <p class="subtitle">Bir mesaj yapistir, gercek zamanli olarak modelin ne dedigini gor.</p>
+    <p class="subtitle">Bir mesaj yapistir, gercek zamanli olarak modelin ne dedigini gor. 4 kategori: OTP, Reklam, Spam, Bilgilendirme.</p>
 
     <div class="card">
       <textarea id="text-input" placeholder="Ornek: Tebrikler! Bonus kazandiniz, hemen tiklayin: bit.ly/x"></textarea>
       <div class="examples">
-        <button class="example-btn" data-example="Tebrikler! Bahis hesabiniza 500 TL bonus tanimlandi. Hemen cekmek icin: bit.ly/bonus500">Bahis dolandiriciligi</button>
-        <button class="example-btn" data-example="Bankaniz guvenlik nedeniyle hesabinizi kisitladi. Dogrulamak icin: guvenlik-bankam.com/dogrula">Phishing</button>
-        <button class="example-btn" data-example="Anne, telefonum bozuldu bu numaradan yaziyorum, acil 2000 TL gonderir misin, aksam oderim">Finansal aciliyet</button>
-        <button class="example-btn" data-example="Hesabiniza 1.500,00 TL EFT girisi gerceklesmistir. Bakiye: 3.240,00 TL. Garanti BBVA">Gercek banka bildirimi</button>
-        <button class="example-btn" data-example="Yarin saat 15:00'te toplantimiz var, unutma.">Sade sohbet</button>
+        <button class="example-btn" data-example="GUVENLIGINIZ ICIN KIMSEYLE PAYLASMAYINIZ! Hizli Giris sifreniz 865458 ile uygulamaya giris yapabilirsiniz.">OTP</button>
+        <button class="example-btn" data-example="Hepsiburada'da bugune ozel %40 indirim kuponu seni bekliyor! Kodu kullan: HEPSI40. Mersis: 0123456789. STOP yazarak reklam mesajlarindan cikabilirsiniz.">Reklam</button>
+        <button class="example-btn" data-example="Tebrikler! Bahis hesabiniza 500 TL bonus tanimlandi. Hemen cekmek icin: bit.ly/bonus500">Spam (bahis)</button>
+        <button class="example-btn" data-example="Bankaniz guvenlik nedeniyle hesabinizi kisitladi. Dogrulamak icin: guvenlik-bankam.com/dogrula">Spam (phishing)</button>
+        <button class="example-btn" data-example="Anne, telefonum bozuldu bu numaradan yaziyorum, acil 2000 TL gonderir misin, aksam oderim">Spam (finansal aciliyet)</button>
+        <button class="example-btn" data-example="Hesabiniza 1.500,00 TL EFT girisi gerceklesmistir. Bakiye: 3.240,00 TL. Garanti BBVA">Bilgilendirme</button>
       </div>
       <div class="submit-row">
         <button class="submit-btn" id="submit-btn">Siniflandir</button>
@@ -190,15 +179,12 @@
 
 <script>
 const CATEGORY_LABELS = {
-  legitimate: "Mesru",
+  otp: "OTP",
+  bilgilendirme: "Bilgilendirme",
+  reklam: "Reklam",
   spam: "Spam",
-  gambling_scam: "Bahis Dolandiriciligi",
-  phishing: "Phishing",
-  financial_urgency: "Finansal Aciliyet",
 };
-const CATEGORY_ORDER = ["legitimate", "spam", "gambling_scam", "phishing", "financial_urgency"];
-const SUBTYPE_LABELS = { otp: "OTP", bilgilendirme: "Bilgilendirme", reklam: "Reklam" };
-const SUBTYPE_SOURCE_LABELS = { rule_otp: "kural", model: "model" };
+const CATEGORY_ORDER = ["otp", "bilgilendirme", "reklam", "spam"];
 
 const textInput = document.getElementById("text-input");
 const submitBtn = document.getElementById("submit-btn");
@@ -235,18 +221,10 @@ function render(data) {
     ? data.urls_found.map((u) => `<code>${escapeHtml(u)}</code>`).join(" ")
     : "yok";
 
-  const subtypeBadge = data.subtype
-    ? `<span class="subtype-badge">${SUBTYPE_LABELS[data.subtype.subtype] || data.subtype.subtype}</span>
-       <span class="subtype-source">(${SUBTYPE_SOURCE_LABELS[data.subtype.source] || data.subtype.source}${
-         data.subtype.reklam_probability != null ? `, P(reklam)=${data.subtype.reklam_probability.toFixed(2)}` : ""
-       })</span>`
-    : "";
-
   resultCard.innerHTML = `
     <div class="hero">
       <span class="hero-label" style="background:var(--cat-${data.label});">${CATEGORY_LABELS[data.label] || data.label}</span>
       <span class="hero-conf">%${(data.confidence * 100).toFixed(1)} guven</span>
-      ${subtypeBadge}
     </div>
     ${bars}
     <div class="flags">

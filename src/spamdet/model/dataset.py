@@ -7,6 +7,7 @@ from sklearn.model_selection import train_test_split
 
 from ..build_dataset import DEFAULT_RAW_DIR, build_loaders
 from ..merge import merge_sources, records_to_dataframe
+from ..schema import Label
 from ..synthetic.adversarial import generate_adversarial_set
 from ..synthetic.augment import TemplateParaphraser, augment_examples
 from ..synthetic.seeds import load_all_seeds
@@ -42,7 +43,15 @@ def build_training_dataframe(
     combined = pd.concat([public_df, synthetic_df], ignore_index=True)
     if combined.empty:
         return combined
-    return combined.drop_duplicates(subset=["text", "lang"], keep="first").reset_index(drop=True)
+    combined = combined.drop_duplicates(subset=["text", "lang"], keep="first").reset_index(drop=True)
+
+    # otp is rule-detected (otp_rule.detect_otp), never predicted by the
+    # ML model - see model/labels.py. Excluded here rather than at the
+    # seed-file level so data/synthetic/seeds/otp.yaml can still be used
+    # elsewhere (e.g. as otp_rule regression-test fixtures) without
+    # needing a separate directory.
+    combined = combined[combined["label"] != Label.OTP.value].reset_index(drop=True)
+    return combined
 
 
 def split_dataset(

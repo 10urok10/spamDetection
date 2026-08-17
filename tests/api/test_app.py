@@ -15,17 +15,17 @@ class _FakeClassifier:
         return self._results.get(text, self._default)
 
 
-HIGH_CONFIDENCE = PredictionResult(label="legitimate", confidence=0.95, probabilities={"legitimate": 0.95, "spam": 0.05})
-BORDERLINE = PredictionResult(label="phishing", confidence=0.5, probabilities={"phishing": 0.5, "legitimate": 0.5})
+HIGH_CONFIDENCE = PredictionResult(
+    label="bilgilendirme", confidence=0.95, probabilities={"bilgilendirme": 0.95, "spam": 0.05}
+)
+BORDERLINE = PredictionResult(label="spam", confidence=0.5, probabilities={"spam": 0.5, "bilgilendirme": 0.5})
 
 
 @pytest.fixture
 def client():
     fake_classifier = _FakeClassifier({}, default=HIGH_CONFIDENCE)
     fake_redis = fakeredis.FakeStrictRedis(decode_responses=False)
-    # subtype_detector=None explicitly - stay decoupled from whatever
-    # subtype model does/doesn't happen to exist on disk here.
-    app = create_app(classifier=fake_classifier, redis_client=fake_redis, subtype_detector=None)
+    app = create_app(classifier=fake_classifier, redis_client=fake_redis)
     with TestClient(app) as test_client:
         yield test_client
 
@@ -34,43 +34,16 @@ def client():
 def client_with_borderline():
     fake_classifier = _FakeClassifier({}, default=BORDERLINE)
     fake_redis = fakeredis.FakeStrictRedis(decode_responses=False)
-    app = create_app(classifier=fake_classifier, redis_client=fake_redis, subtype_detector=None)
+    app = create_app(classifier=fake_classifier, redis_client=fake_redis)
     with TestClient(app) as test_client:
         yield test_client
 
 
-class _FakeSubtypeDetector:
-    def __init__(self, subtype: str = "reklam", reklam_probability: float = 0.9):
-        self._subtype = subtype
-        self._reklam_probability = reklam_probability
-
-    def detect(self, text: str):
-        from spamdet.subtype.detector import SubtypeResult
-
-        return SubtypeResult(subtype=self._subtype, source="model", reklam_probability=self._reklam_probability)
-
-
-@pytest.fixture
-def client_with_subtype():
-    fake_classifier = _FakeClassifier({}, default=HIGH_CONFIDENCE)
-    fake_redis = fakeredis.FakeStrictRedis(decode_responses=False)
-    app = create_app(
-        classifier=fake_classifier, redis_client=fake_redis, subtype_detector=_FakeSubtypeDetector()
-    )
-    with TestClient(app) as test_client:
-        yield test_client
-
-
-def test_classify_includes_subtype_when_label_is_legitimate(client_with_subtype):
-    resp = client_with_subtype.post("/classify", json={"text": "Bu hafta magazamizda indirim var!"})
+def test_classify_otp_text_short_circuits_the_ml_classifier(client):
+    resp = client.post("/classify", json={"text": "Kodunuz: 123456. Kimseyle paylasmayin."})
     body = resp.json()
-    assert body["label"] == "legitimate"
-    assert body["subtype"] == {"subtype": "reklam", "source": "model", "reklam_probability": 0.9}
-
-
-def test_classify_omits_subtype_when_detector_disabled(client):
-    resp = client.post("/classify", json={"text": "yarin gorusuruz"})
-    assert resp.json()["subtype"] is None
+    assert body["label"] == "otp"
+    assert body["confidence"] == 0.95
 
 
 def test_health(client):
@@ -83,7 +56,7 @@ def test_classify_high_confidence_not_queued(client):
     resp = client.post("/classify", json={"text": "yarin gorusuruz"})
     assert resp.status_code == 200
     body = resp.json()
-    assert body["label"] == "legitimate"
+    assert body["label"] == "bilgilendirme"
     assert body["needs_review"] is False
     assert client.get("/review/pending").json() == []
 
@@ -105,7 +78,7 @@ def test_classify_borderline_confidence_queued_for_review(client_with_borderline
     pending = client_with_borderline.get("/review/pending").json()
     assert len(pending) == 1
     assert pending[0]["text"] == "belirsiz bir mesaj"
-    assert pending[0]["label"] == "phishing"
+    assert pending[0]["label"] == "spam"
 
 
 def test_review_decide_approve_appends_confirmed_record(client_with_borderline, tmp_path, monkeypatch):
@@ -156,6 +129,13 @@ def test_dashboard_renders_pending_items(client_with_borderline):
     assert "belirsiz mesaj" in resp.text
 
 
+def test_dashboard_shows_all_four_categories_in_correction_dropdown(client_with_borderline):
+    client_with_borderline.post("/classify", json={"text": "belirsiz mesaj", "message_id": "m1"})
+    resp = client_with_borderline.get("/dashboard")
+    for label in ("otp", "reklam", "spam", "bilgilendirme"):
+        assert f'value="{label}"' in resp.text
+
+
 def test_dashboard_form_decide_redirects_and_resolves(client_with_borderline, tmp_path, monkeypatch):
     confirmed_path = tmp_path / "confirmed.jsonl"
     monkeypatch.setenv("SPAMDET_CONFIRMED_DATA_PATH", str(confirmed_path))
@@ -165,7 +145,7 @@ def test_dashboard_form_decide_redirects_and_resolves(client_with_borderline, tm
 
     resp = client_with_borderline.post(
         f"/dashboard/review/{item_id}",
-        data={"decision": "approve", "corrected_label": "phishing"},
+        data={"decision": "approve", "corrected_label": "spam"},
         follow_redirects=False,
     )
     assert resp.status_code == 303

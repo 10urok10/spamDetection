@@ -82,11 +82,12 @@ subpackage and can be exercised independently:**
    unshortening) is deliberately Turkish-diacritic-safe: it must not
    flag/mangle `ç ğ ı ö ş ü İ` while still catching real evasion — see the
    test suites for the specific false-positive guards. `synthetic/`
-   generates the fraud-subtype training data no public Turkish dataset
-   has (`gambling_scam`, `phishing`, `financial_urgency`): hand-written
-   seeds in `data/synthetic/seeds/*.yaml` → rule-based paraphrase
-   augmentation → homoglyph/zero-width adversarial corruption, all
-   offline and deterministic given `--rng-seed`.
+   generates the `otp`/`reklam` training data no public Turkish dataset
+   has (the public datasets are binary spam/ham and can't distinguish
+   these from generic `spam`/`bilgilendirme`): hand-written seeds in
+   `data/synthetic/seeds/*.yaml` → rule-based paraphrase augmentation →
+   homoglyph/zero-width adversarial corruption, all offline and
+   deterministic given `--rng-seed`.
 
 2. **Model + outbreak detection** (`model/`, `outbreak/`) —
    `model/dataset.py` combines the Stage-1 loaders' output with the
@@ -113,39 +114,53 @@ subpackage and can be exercised independently:**
    the real ones the lifespan handler builds from `api/config.py`'s
    env-var lookups.
 
-**Label taxonomy and what `spam` means**: five top-level labels —
-`legitimate, spam, gambling_scam, phishing, financial_urgency`
-(`model/labels.py`, fixed order = fixed integer ids everywhere). The
-public datasets are binary (spam/ham) and only ever produce
-`legitimate`/`spam`; the three fraud subtypes exist exclusively in the
-synthetic seed data. There is no synthetic `spam` seed file — that label
-only ever comes from the public datasets. Fraud intent specifically is
-what the other three labels are for.
+**Label taxonomy is a flat 4-way split, not a hierarchy** — `otp`,
+`reklam`, `spam`, `bilgilendirme` (`schema.py`'s `Label`, `model/labels.py`
+for the 3-way ML subset, fixed order = fixed integer ids everywhere). This
+replaced an earlier, more elaborate design: a 5-label top level
+(`legitimate, spam, gambling_scam, phishing, financial_urgency`) with a
+separate post-hoc "legitimate-subtype" layer (`otp`/`bilgilendirme`/
+`reklam` splitting whatever the top-level model called `legitimate`).
+Per explicit user instruction ("4 kategori olacak, diğer şeyleri sil" —
+there will be 4 categories, delete the other things), that whole hierarchy
+was collapsed: the three fraud subtypes (`gambling_scam`/`phishing`/
+`financial_urgency`) now just fall under generic `spam`, and the
+subtype-detection layer (formerly `subtype/`) was deleted entirely and
+folded into the main pipeline. Don't resurrect fraud-specific labels or a
+subtype layer without a similarly explicit instruction to do so — this was
+a deliberate simplification, not an oversight.
 
-**Advertising messages are `legitimate`, not `spam`** — this reversed
-partway through the project (an earlier round had them as `spam`; see
-git history on `docs/model.md` for the "hepsiburada kuponu" example that
-prompted the reversal). A real, identifiable, regulated marketing SMS
-(Mersis number, opt-out mechanism) is a `legitimate` message whose
-*subtype* is `reklam` — see the subtype system below. Don't move ad-like
-text back to top-level `spam` without re-reading why.
+- **`otp`** — one-time password / login codes. Detected by a
+  deterministic rule (`otp_rule.py`: digit code + disclaimer phrase,
+  formerly `subtype/rules.py`), never predicted by the ML model — it's
+  templated/structured enough that a rule beats a learned class and needs
+  no training data. `model/dataset.py` filters `otp`-labeled seed rows out
+  of ML training data for the same reason (see `model/labels.py`'s
+  `LABELS`, which excludes it).
+- **`reklam`** — advertisements, regardless of KVKK-consent status; this
+  system only judges whether a message *is* an ad, not whether it was
+  sent through the right consented channel. **No Mersis-number/opt-out-
+  phrase rule exists for `reklam`** — a real user-supplied customer-
+  satisfaction-survey message contains both markers without being an ad,
+  disproving that shortcut; those signals are ML features (now trained
+  directly into the main model), not a hard-coded trigger.
+- **`spam`** — unsolicited/unwanted messaging that isn't an ad, including
+  the former fraud subtypes (gambling scams, phishing, financial-urgency
+  social engineering). `spam` has meant different things at different
+  points in this project's history (see `docs/model.md`'s "superseded
+  twice" note) — don't trust an old doc passage's characterization of
+  `spam` without checking which era it's from.
+- **`bilgilendirme`** — everything else legitimate/informational (bank
+  notifications, cargo tracking, appointment reminders, ...). The public
+  spam/ham datasets' `ham` maps here (see `docs/datasets.md`).
 
-**Legitimate-message subtypes** (`subtype/`, separate from the five
-top-level labels above): an SMS-operator compliance layer that further
-splits whatever the top-level model calls `legitimate` into `otp` /
-`bilgilendirme` (informational) / `reklam` (advertisement) — built so ad
-content can be checked against the right (separately KVKK-consented)
-sending channel. `otp` is a deterministic regex rule
-(`subtype/rules.py`); `reklam` vs `bilgilendirme` is a lightweight
-TF-IDF + logistic-regression classifier (`subtype/ad_info_classifier.py`),
-deliberately not another transformer fine-tune — evaluate the cheap
-option first, escalate only if it underperforms (see `docs/subtype.md`).
-**No Mersis-number/opt-out-phrase rule exists for `reklam`** — a real
-user-supplied customer-satisfaction-survey message contains both markers
-without being an ad, disproving that shortcut; those signals are ML
-features, not a hard-coded trigger. `spam`/fraud-subtype messages never
-get a subtype — only `legitimate` ones do. This whole layer runs
-strictly *after* the top-level model and never retrains or touches it.
+The ML model (`model/train.py`) is a 3-way classifier over
+`bilgilendirme`/`reklam`/`spam` — `otp` is rule-only. `ClassificationPipeline`
+(`api/pipeline.py`) runs the OTP rule first and short-circuits to the ML
+model only when it doesn't match; there is no override/reclassification
+logic layered on top of the model's own verdict anymore (the earlier
+"spam-override-to-legitimate-subtype" mechanism was deleted along with the
+subtype layer).
 
 **Deliberately-not-built, documented instead of coded** (don't
 "fix" these without re-reading why first): URL unshortening
@@ -166,11 +181,15 @@ forbids the commercial use this project is scoped for. Details in
 `docs/licensing_notes.md`.
 
 **Small-dataset whack-a-mole is a known, recurring dynamic, not a bug to
-silently "fix" with one seed edit**: with only ~80 hand-written synthetic
-seeds underpinning the fraud-subtype labels, nudging one confusable
+silently "fix" with one seed edit**: with only a small number of
+hand-written synthetic seeds underpinning `otp`/`reklam` (the two
+categories no public dataset covers, ~228 `reklam` rows total —
+currently the smallest/most imbalanced class), nudging one confusable
 message pattern reliably perturbs another. `docs/model.md` documents a
-full real investigation chain of this (including that broadening
-`legitimate` example *diversity* — not fine-grained-class *volume* —
-turned out to be what actually resolved a persistent case). Read it
-before assuming a single new seed example is a permanent fix; validate
-against the regression-style checks the doc describes.
+full real investigation chain of this from before the taxonomy pivot
+(including that broadening a catch-all class's example *diversity* — not
+a fine-grained class's *volume* — turned out to be what actually resolved
+a persistent case; the lesson maps onto `bilgilendirme` today the same
+way it mapped onto `legitimate` then). Read it before assuming a single
+new seed example is a permanent fix; validate against the
+regression-style checks the doc describes.

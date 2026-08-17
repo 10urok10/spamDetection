@@ -4,25 +4,23 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class Label(str, Enum):
-    """Message category.
+    """Message category - a flat 4-way taxonomy (no fraud-subtype/
+    legitimate hierarchy). OTP is rule-detected (see otp_rule.py) and
+    never predicted by the ML model; SPAM/REKLAM/BILGILENDIRME are the
+    model's 3 output classes.
 
-    Public source datasets only distinguish spam/ham, so they map to
-    LEGITIMATE/SPAM. The fine-grained fraud subtypes are only produced by
-    our own synthetic data (no public Turkish dataset for them exists).
+    - otp: one-time passwords / verification / 2FA codes
+    - reklam: promotional campaigns, discounts, marketing, ads
+    - spam: unsolicited, suspicious, phishing, or irrelevant junk
+    - bilgilendirme: transactional notifications, account updates,
+      shipping status, appointment reminders, general information
+      (excluding OTPs)
     """
 
-    LEGITIMATE = "legitimate"
+    OTP = "otp"
+    REKLAM = "reklam"
     SPAM = "spam"
-    GAMBLING_SCAM = "gambling_scam"
-    PHISHING = "phishing"
-    FINANCIAL_URGENCY = "financial_urgency"
-
-    @property
-    def coarse(self) -> "Label":
-        """Collapse fine-grained synthetic categories to spam/legitimate so
-        binary-labeled public datasets and multi-class synthetic data can be
-        trained on together (e.g. as an auxiliary binary head in Stage 2)."""
-        return self if self is Label.LEGITIMATE else Label.SPAM
+    BILGILENDIRME = "bilgilendirme"
 
 
 class Lang(str, Enum):

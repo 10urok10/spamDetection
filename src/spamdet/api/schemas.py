@@ -11,15 +11,9 @@ class OutbreakInfo(BaseModel):
     similar_message_ids: list[str]
 
 
-class SubtypeInfo(BaseModel):
-    subtype: str  # "otp" | "bilgilendirme" | "reklam"
-    source: str  # "rule_otp" | "model"
-    reklam_probability: float | None = None
-
-
 class ClassifyResponse(BaseModel):
     message_id: str
-    label: str
+    label: str  # "otp" | "reklam" | "spam" | "bilgilendirme"
     confidence: float
     probabilities: dict[str, float]
     cleaned_text: str
@@ -27,7 +21,6 @@ class ClassifyResponse(BaseModel):
     urls_found: list[str]
     needs_review: bool
     outbreak: OutbreakInfo
-    subtype: SubtypeInfo | None = None
 
 
 class ReviewDecisionRequest(BaseModel):

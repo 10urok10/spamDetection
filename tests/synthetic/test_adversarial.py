@@ -33,7 +33,7 @@ def test_zero_width_variant_round_trips_with_cleaner():
 
 
 def test_generate_adversarial_set_reproducible_given_seed():
-    seeds = [Record(text="bonus kazandiniz tiklayin", label=Label.GAMBLING_SCAM, source="synthetic_seed", lang=Lang.TR)]
+    seeds = [Record(text="bonus kazandiniz tiklayin", label=Label.SPAM, source="synthetic_seed", lang=Lang.TR)]
     a = generate_adversarial_set(seeds, rng_seed=42)
     b = generate_adversarial_set(seeds, rng_seed=42)
     assert [r.text for r in a] == [r.text for r in b]
@@ -41,7 +41,7 @@ def test_generate_adversarial_set_reproducible_given_seed():
 
 def test_generate_adversarial_set_emits_homoglyph_and_zero_width_pair_per_seed():
     seeds = [
-        Record(text="sifrenizi guncelleyin", label=Label.PHISHING, source="synthetic_seed", lang=Lang.TR),
+        Record(text="sifrenizi guncelleyin", label=Label.SPAM, source="synthetic_seed", lang=Lang.TR),
     ]
     records = generate_adversarial_set(seeds, rng_seed=1)
     assert len(records) == 2
@@ -49,5 +49,5 @@ def test_generate_adversarial_set_emits_homoglyph_and_zero_width_pair_per_seed()
     assert variant_types == {"homoglyph", "zero_width"}
     for r in records:
         assert r.source == "synthetic_adversarial"
-        assert r.label is Label.PHISHING
+        assert r.label is Label.SPAM
         assert r.extra["original_text"] == "sifrenizi guncelleyin"

@@ -1,6 +1,6 @@
 import pytest
 
-from spamdet.subtype.rules import detect_otp
+from spamdet.otp_rule import detect_otp
 
 
 @pytest.mark.parametrize(

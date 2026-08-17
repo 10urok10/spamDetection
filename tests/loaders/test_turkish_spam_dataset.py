@@ -17,7 +17,7 @@ def test_loads_records_with_standard_columns(tmp_path):
     assert len(records) == 2
     assert records[0].label is Label.SPAM
     assert records[0].lang is Lang.TR
-    assert records[1].label is Label.LEGITIMATE
+    assert records[1].label is Label.BILGILENDIRME
 
 
 def test_handles_numeric_label_encoding(tmp_path):
@@ -25,7 +25,7 @@ def test_handles_numeric_label_encoding(tmp_path):
     path.write_text("email,Category\nbedava kazan,1\nnormal mesaj,0\n", encoding="utf-8")
     records = loader.load(path)
     assert records[0].label is Label.SPAM
-    assert records[1].label is Label.LEGITIMATE
+    assert records[1].label is Label.BILGILENDIRME
 
 
 def test_raises_column_not_found(tmp_path):
@@ -53,6 +53,6 @@ def test_loads_xlsx_with_no_real_header_and_trailing_blank_row(tmp_path):
 
     records = loader.load(path)
     assert len(records) == 2
-    assert records[0].label is Label.LEGITIMATE
+    assert records[0].label is Label.BILGILENDIRME
     assert records[1].label is Label.SPAM
     assert records[1].lang is Lang.TR

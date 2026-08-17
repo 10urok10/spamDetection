@@ -29,9 +29,12 @@ LABEL_COLUMNS = [
 
 LABEL_MAP = {
     "spam": Label.SPAM,
-    "normal": Label.LEGITIMATE,
-    "legitimate": Label.LEGITIMATE,
-    "ham": Label.LEGITIMATE,
+    # the public dataset only distinguishes spam/ham - "ham" doesn't tell
+    # us otp/reklam/bilgilendirme, so it maps to bilgilendirme as the
+    # general "not spam, informational" catch-all (see docs/model.md)
+    "normal": Label.BILGILENDIRME,
+    "legitimate": Label.BILGILENDIRME,
+    "ham": Label.BILGILENDIRME,
 }
 
 

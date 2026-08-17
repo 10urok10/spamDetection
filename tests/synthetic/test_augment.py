@@ -31,11 +31,11 @@ def test_paraphrase_handles_text_with_no_known_trigger_words():
 
 
 def test_augment_examples_preserves_label_and_tags_original_text():
-    seeds = [Record(text="bonus kazandiniz", label=Label.GAMBLING_SCAM, source="synthetic_seed", lang=Lang.TR)]
+    seeds = [Record(text="bonus kazandiniz", label=Label.SPAM, source="synthetic_seed", lang=Lang.TR)]
     augmented = augment_examples(seeds, TemplateParaphraser(rng_seed=5), n_per_seed=3)
     assert len(augmented) == 3
     for rec in augmented:
-        assert rec.label is Label.GAMBLING_SCAM
+        assert rec.label is Label.SPAM
         assert rec.source == "synthetic_augmented"
         assert rec.extra["original_text"] == "bonus kazandiniz"
         assert rec.text != "bonus kazandiniz"

@@ -18,7 +18,7 @@ def test_loads_records_with_standard_column_names(tmp_path):
     assert records[0].label is Label.SPAM
     assert records[0].lang is Lang.TR
     assert records[0].source == "turkish_sms_collection"
-    assert records[1].label is Label.LEGITIMATE
+    assert records[1].label is Label.BILGILENDIRME
 
 
 def test_handles_alternate_column_casing_and_naming(tmp_path):
@@ -63,7 +63,7 @@ def test_falls_back_to_semicolon_delimiter(tmp_path):
     )
     records = loader.load(path)
     assert len(records) == 2
-    assert records[0].label is Label.LEGITIMATE
+    assert records[0].label is Label.BILGILENDIRME
     assert records[1].label is Label.SPAM
     assert "bonus" in records[1].text.lower()
 
@@ -75,4 +75,4 @@ def test_prefers_grouptext_over_numeric_group_code(tmp_path):
     path.write_text("Message;Group;GroupText\r\nmerhaba;2;Normal\r\n", encoding="utf-8")
     records = loader.load(path)
     assert len(records) == 1
-    assert records[0].label is Label.LEGITIMATE
+    assert records[0].label is Label.BILGILENDIRME

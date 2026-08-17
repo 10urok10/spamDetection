@@ -1,4 +1,4 @@
-category: financial_urgency
+category: spam
 examples:
   - text: "Anne, telefonum bozuldu bu numaradan yaziyorum, acil 2000 TL gonderir misin, aksam oderim"
     notes: "hijacked-relative / fake-WhatsApp urgent money request pattern"

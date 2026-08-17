@@ -5,7 +5,7 @@ from spamdet.merge import merge_sources, write_processed
 from spamdet.schema import Label, Lang, Record
 
 
-def _rec(text, label=Label.LEGITIMATE, source="src", lang=Lang.TR):
+def _rec(text, label=Label.BILGILENDIRME, source="src", lang=Lang.TR):
     return Record(text=text, label=label, source=source, lang=lang)
 
 

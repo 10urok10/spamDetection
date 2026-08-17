@@ -12,7 +12,10 @@ SOURCE_NAME = "sms_spam_collection"
 TEXT_COLUMNS = ["v2", "text", "Text", "message", "Message", "sms"]
 LABEL_COLUMNS = ["v1", "label", "Label", "class", "Class", "Category", "category"]
 
-LABEL_MAP = {"spam": Label.SPAM, "ham": Label.LEGITIMATE, "legitimate": Label.LEGITIMATE}
+# "ham" doesn't tell us otp/reklam/bilgilendirme, so it maps to
+# bilgilendirme as the general "not spam, informational" catch-all (see
+# docs/model.md)
+LABEL_MAP = {"spam": Label.SPAM, "ham": Label.BILGILENDIRME, "legitimate": Label.BILGILENDIRME}
 
 
 def load(path: str | Path) -> list[Record]:

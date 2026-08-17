@@ -1,0 +1,9 @@
+category: otp
+examples:
+  - text: "Tek kullanimlik sifreniz: 482910. Bu kodu kimseyle paylasmayin. Garanti BBVA"
+    notes: "real OTP message - structurally similar to phishing OTP-harvesting but is the genuine bank-issued code"
+  - text: "GUVENLIGINIZ ICIN KIMSEYLE PAYLASMAYINIZ! Hizli Giris sifreniz 741852 ile uygulamaya giris yapabilirsiniz. Referans: A8K2X"
+    notes: "real app quick-login OTP - the 'GUVENLIGINIZ ICIN KIMSEYLE PAYLASMAYINIZ' disclaimer is itself a standard legitimate security phrase used by real banks/apps, not a phishing tell"
+  - text: "Dogrulama kodunuz: 559214. Bu kodu kimseyle paylasmayiniz, sadece uygulama icinde kullaniniz."
+  - text: "123456 is your Huawei verification code to register HUAWEI ID."
+    notes: "English OTP - project scope is Turkish-primary so English coverage is thin"

@@ -9,7 +9,7 @@ def test_loads_records_with_v1_v2_columns(tmp_path):
     assert len(records) == 2
     assert records[0].label is Label.SPAM
     assert records[0].lang is Lang.EN
-    assert records[1].label is Label.LEGITIMATE
+    assert records[1].label is Label.BILGILENDIRME
 
 
 def test_falls_back_to_headerless_tab_separated_uci_format(tmp_path):
@@ -18,4 +18,4 @@ def test_falls_back_to_headerless_tab_separated_uci_format(tmp_path):
     records = loader.load(path)
     assert len(records) == 2
     assert records[0].label is Label.SPAM
-    assert records[1].label is Label.LEGITIMATE
+    assert records[1].label is Label.BILGILENDIRME

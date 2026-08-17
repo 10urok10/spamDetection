@@ -25,7 +25,7 @@ def test_loads_records_and_maps_labels_no_network_call():
     assert records[0].label is Label.SPAM
     assert records[0].lang is Lang.TR
     assert records[0].source == "turkishsms_ds"
-    assert records[1].label is Label.LEGITIMATE
+    assert records[1].label is Label.BILGILENDIRME
 
 
 def test_raises_on_unmapped_label_value():

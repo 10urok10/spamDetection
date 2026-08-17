@@ -12,11 +12,14 @@ LABEL_COLUMNS = ["label", "Label", "Category", "category", "class", "Class", "et
 
 LABEL_MAP = {
     "spam": Label.SPAM,
-    "ham": Label.LEGITIMATE,
-    "normal": Label.LEGITIMATE,
-    "legitimate": Label.LEGITIMATE,
+    # "ham" doesn't tell us otp/reklam/bilgilendirme, so it maps to
+    # bilgilendirme as the general "not spam, informational" catch-all
+    # (see docs/model.md)
+    "ham": Label.BILGILENDIRME,
+    "normal": Label.BILGILENDIRME,
+    "legitimate": Label.BILGILENDIRME,
     "1": Label.SPAM,
-    "0": Label.LEGITIMATE,
+    "0": Label.BILGILENDIRME,
 }
 
 

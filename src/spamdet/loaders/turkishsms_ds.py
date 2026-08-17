@@ -6,8 +6,10 @@ SOURCE_NAME = "turkishsms_ds"
 HF_REPO = "akuysal/turkishSMS-ds"
 
 # Confirmed schema (2026-08): columns `text`, `label` with string values
-# "legitimate"/"spam"; also has `sms_length` (unused here).
-LABEL_MAP = {"legitimate": Label.LEGITIMATE, "spam": Label.SPAM}
+# "legitimate"/"spam"; also has `sms_length` (unused here). "legitimate"
+# doesn't tell us otp/reklam/bilgilendirme, so it maps to bilgilendirme
+# as the general "not spam, informational" catch-all (see docs/model.md).
+LABEL_MAP = {"legitimate": Label.BILGILENDIRME, "spam": Label.SPAM}
 
 
 def load(*, revision: str | None = None, dataset_loader: Callable[..., object] | None = None) -> list[Record]:

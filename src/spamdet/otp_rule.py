@@ -29,16 +29,15 @@ _OTP_KEYWORD_PATTERNS = [
 ]
 
 # NOTE: Mersis-number and opt-out ("RET yaz") detection were deliberately
-# NOT added here as a rule for the reklam subtype. Real data disproved the
-# assumption they're ad-specific: a real Flixbus customer-satisfaction
-# survey message (see data/synthetic/seeds/legitimate.yaml's bilgilendirme
-# entries) contains BOTH a Mersis number and a "RET yaz" opt-out phrase,
-# despite not being an advertisement - these turn out to be general
-# regulated-bulk-SMS compliance markers, not ad-specific ones. They're
-# still useful *signals*, just not deterministic ones - the
-# reklam/bilgilendirme distinction is left entirely to the ML classifier
-# in ad_info_classifier.py, which can weigh them alongside promotional
-# vocabulary instead of triggering on them alone.
+# NOT added here as a rule for the reklam category. Real data disproved
+# the assumption they're ad-specific: a real Flixbus customer-satisfaction
+# survey message (see data/synthetic/seeds/bilgilendirme.yaml) contains
+# BOTH a Mersis number and a "RET yaz" opt-out phrase, despite not being
+# an advertisement - these turn out to be general regulated-bulk-SMS
+# compliance markers, not ad-specific ones. They're still useful
+# *signals*, just not deterministic ones - the reklam/bilgilendirme/spam
+# distinction is left entirely to the ML classifier, which can weigh them
+# alongside promotional vocabulary instead of triggering on them alone.
 
 
 def detect_otp(text: str) -> bool:
@@ -46,7 +45,9 @@ def detect_otp(text: str) -> bool:
     message: a 4-8 digit code together with a disclaimer/labeling phrase.
     Requiring both avoids false-triggering on messages that merely
     contain some 4-8 digit number (an amount, a contract number, ...)
-    without actually being an OTP.
+    without actually being an OTP. This runs BEFORE the ML model - OTP
+    is deterministic/templated enough that a rule is more reliable (and
+    cheaper) than training a class for it.
     """
     if not _OTP_CODE_PATTERN.search(text):
         return False

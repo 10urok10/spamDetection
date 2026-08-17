@@ -1,5 +1,43 @@
 # Model (Stage 2)
 
+## Update (2026-08): flat 4-category taxonomy
+
+The label scheme changed after this doc's investigation history below was
+written. Per explicit user decision, the earlier 5-label
+(`legitimate`/`spam`/`gambling_scam`/`phishing`/`financial_urgency`) +
+separate legitimate-subtype layer (`otp`/`bilgilendirme`/`reklam`, see the
+now-deleted `docs/subtype.md`) design was **fully collapsed** into one flat
+taxonomy: `otp`, `reklam`, `spam`, `bilgilendirme` (`schema.Label`). There
+is no more "coarse vs. fine-grained" or "legitimate vs. its subtype"
+distinction - these are four siblings.
+
+- `otp` is still rule-detected (`spamdet.otp_rule.detect_otp`, formerly
+  `subtype/rules.py`) and never reaches the ML model - see
+  `model/labels.py`.
+- The ML model is now a **3-way** classifier: `bilgilendirme`, `reklam`,
+  `spam` (`model/labels.py`'s `LABELS`). `reklam` used to be a separate
+  post-hoc subtype classifier (TF-IDF + logistic regression); it's now
+  folded directly into the main mDeBERTa fine-tune as a first-class label.
+- The three fraud subtypes (`gambling_scam`, `phishing`,
+  `financial_urgency`) no longer exist as distinct labels - their seed
+  files (`data/synthetic/seeds/gambling_scam.yaml` etc.) are retagged
+  `category: spam` and still contribute spam-pattern diversity, just
+  without a fine-grained label attached.
+
+**The investigation history below (overconfidence, whack-a-mole,
+train/test leakage, the Mersis-number finding) predates this pivot and
+uses the old label names** (`legitimate`, `phishing`, `gambling_scam`,
+etc.). It's kept because the *lessons* still apply directly to the new
+taxonomy - e.g. "broadening a catch-all class's example diversity, not a
+fine-grained class's volume, was the actual fix" maps onto
+`bilgilendirme` today exactly as it mapped onto `legitimate` before, and
+the Mersis-number-isn't-ad-specific finding is why `reklam` still has no
+hard-coded Mersis/opt-out rule (see `spamdet/otp_rule.py`'s docstring and
+`spamdet/subtype/ad_info_classifier.py`'s history, now folded into the
+main model). Re-read this history before treating a single new seed
+example as a permanent fix to a new-taxonomy confusion - the same
+small-dataset dynamic is expected to resurface.
+
 ## Choice: mDeBERTa-v3-base
 
 Fine-tuned `microsoft/mdeberta-v3-base` (multilingual, disentangled
@@ -31,10 +69,15 @@ all versions) for the DeBERTa-v2 tokenizer.
 ## Focal Loss
 
 `src/spamdet/model/focal_loss.py` implements multi-class focal loss (Lin et
-al. 2017) plus inverse-frequency class weights, used because
-`gambling_scam`/`phishing`/`financial_urgency` have far fewer examples than
-`legitimate`/`spam`. `FocalLossTrainer` is a thin `transformers.Trainer`
-subclass overriding `compute_loss`.
+al. 2017) plus inverse-frequency class weights, used for class imbalance
+across the 3-way ML label set (`model/labels.py`'s `LABELS`). Under the
+current flat taxonomy `reklam` is by far the smallest/most imbalanced
+class (~228 synthetic rows vs. thousands of `bilgilendirme`/`spam` rows
+from the public datasets - see `docs/datasets.md`), previously it was the
+three fraud subtypes vs. `legitimate`/`spam`. `FocalLossTrainer` is a thin
+`transformers.Trainer` subclass overriding `compute_loss`, generic over
+whatever `LABELS` currently contains - no code change needed when the
+taxonomy changed.
 
 ## Training data caveat - read before trusting the reported metrics
 
@@ -148,14 +191,20 @@ whack-a-mole dynamic is solved in general - it means this specific round
 of it responded well to real (not synthetic) counterexamples; expect the
 same dynamic to resurface for new message styles not yet represented.
 
-**Product decision made along the way**: legitimate, regulated marketing
-(Mersis number + opt-out mechanism, e.g. a retailer coupon SMS) should
-classify as `spam`, not `legitimate` - confirmed explicitly by the user.
-So this system's `spam` label means "unsolicited bulk/promotional
-messaging," not "fraudulent" - fraud-specific intent is what
-`gambling_scam`/`phishing`/`financial_urgency` are for. Worth remembering
-if `spam` vs `legitimate` accuracy is evaluated against a different
-definition later.
+**Product decision made along the way (superseded twice since - see
+below)**: legitimate, regulated marketing (Mersis number + opt-out
+mechanism, e.g. a retailer coupon SMS) should classify as `spam`, not
+`legitimate` - confirmed explicitly by the user at the time. This was
+later reversed (ads moved back to `legitimate`, subtyped `reklam` - see
+the now-deleted `docs/subtype.md`'s history, and the "hepsiburada kuponu"
+example), and reversed again by the 2026-08 flat-taxonomy pivot at the
+top of this doc: `reklam` is now its own top-level label, sibling to
+`spam`/`otp`/`bilgilendirme`, not a spam variant or a legitimate subtype.
+Fraud-specific intent (the old `gambling_scam`/`phishing`/
+`financial_urgency`) is folded into generic `spam` today - `spam` no
+longer has one stable definition across this doc's history, so don't
+trust a `spam` characterization above without checking which era it's
+from.
 
 ## Running it
 

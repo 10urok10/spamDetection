@@ -82,13 +82,19 @@ actual columns found and extend the loader's candidate list to match.
 
 ## Label mapping note
 
-All five public datasets only distinguish spam vs. ham/legitimate. They map
-to `Label.SPAM` / `Label.LEGITIMATE` in our schema. The fine-grained fraud
-subtypes (`gambling_scam`, `phishing`, `financial_urgency`) come exclusively
-from our own synthetic data (`data/synthetic/seeds/`) - no public Turkish
-dataset for those categories exists. `Label.coarse` collapses everything
-non-legitimate to `spam` so both label granularities can be trained on
-together in Stage 2.
+**Update (2026-08): flat 4-category taxonomy.** The schema is now a flat
+`otp` / `reklam` / `spam` / `bilgilendirme` taxonomy (see `docs/model.md`
+for why the earlier 5-label + legitimate-subtype design was collapsed).
+All five public datasets only distinguish spam vs. ham/legitimate, so they
+map to `Label.SPAM` / `Label.BILGILENDIRME` in our schema - `ham` doesn't
+tell us whether a message would be `otp` or `reklam`, so it falls back to
+`bilgilendirme` as the general "not spam, informational" catch-all. `otp`
+and `reklam` come exclusively from our own synthetic data
+(`data/synthetic/seeds/otp.yaml`, `reklam.yaml`) - no public dataset
+distinguishes them from other legitimate traffic. The old fraud-specific
+seed files (`gambling_scam.yaml`, `phishing.yaml`, `financial_urgency.yaml`)
+are now all tagged `category: spam` - their content still adds spam-pattern
+diversity, but they no longer produce distinct labels.
 
 See `docs/licensing_notes.md` for the one hard licensing constraint that
 affects this project (not a dataset, a pretrained model).
