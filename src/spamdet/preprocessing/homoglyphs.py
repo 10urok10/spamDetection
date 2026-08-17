@@ -44,7 +44,16 @@ def detect_mixed_script(text: str, *, preferred_aliases: tuple[str, ...] = ("LAT
         normalized, greedy=True, preferred_aliases=list(preferred_aliases)
     )
     flagged_list = list(confusable_chars) if confusable_chars else []
-    is_mixed = bool(flagged_list) and confusables.is_mixed_script(normalized)
+    # allowed_aliases must exclude INHERITED as well as the library's own
+    # default COMMON: NFKD decomposes Turkish diacritics (g-breve,
+    # s/c-cedilla, o/u-diaeresis, dotted-I) into base-letter + a combining
+    # mark, and those combining marks are categorized INHERITED, not
+    # LATIN. Without this, any Turkish text with a decomposing diacritic
+    # (cok, sey, ...) PLUS any individually-confusable character elsewhere
+    # (e.g. digit "0", which looks like "O") registers as 2+ scripts and
+    # false-triggers - caught via a real "%40 indirim" (discount) message
+    # getting "0" corrupted into "O" mid-number.
+    is_mixed = bool(flagged_list) and confusables.is_mixed_script(normalized, allowed_aliases=["COMMON", "INHERITED"])
     return HomoglyphReport(text=text, is_mixed_script=is_mixed, flagged_chars=flagged_list if is_mixed else [])
 
 

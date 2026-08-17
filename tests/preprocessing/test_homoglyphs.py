@@ -57,3 +57,38 @@ def test_strip_confusables_fixes_only_the_substituted_char():
 def test_strip_confusables_is_noop_on_clean_turkish_text():
     text = "hesabınızda şüpheli işlem tespit edildi"
     assert strip_confusables(text) == text
+
+
+def test_turkish_diacritic_plus_digit_zero_is_not_flagged():
+    # Regression: NFKD-decomposing a diacritic (g-breve -> g + combining
+    # breve, categorized Unicode script "INHERITED") alongside a digit
+    # like "0" (individually confusable with Latin "O") used to trip
+    # is_mixed_script - a real "%40 indirim" (discount) ad got its "0"
+    # silently corrupted into "O" mid-number. INHERITED marks must be
+    # excluded from the mixed-script check same as COMMON is.
+    text = "Bu hafta mağazamızda %40 indirim"
+    report = detect_mixed_script(text)
+    assert report.is_mixed_script is False
+    assert strip_confusables(text) == text
+
+
+def test_other_turkish_diacritics_plus_digit_zero_are_not_flagged():
+    for text in [
+        "Şu anda %0 faizli kredi kampanyası var",  # s-cedilla
+        "Çözüm için 0850 ile iletişime geçin",  # c-cedilla
+        "Ödeme tutarı %0 komisyonludur",  # o-diaeresis
+        "Üyelik ücreti %0 indirimlidir",  # u-diaeresis
+    ]:
+        assert detect_mixed_script(text).is_mixed_script is False
+        assert strip_confusables(text) == text
+
+
+def test_real_attack_still_detected_alongside_turkish_diacritics():
+    # the fix must not blind the detector to genuine attacks just because
+    # a Turkish diacritic is also present in the same message
+    spoofed = "hesabınızı doğrulayın: p" + CYRILLIC_A + "ypal-guvenlik.com"
+    report = detect_mixed_script(spoofed)
+    assert report.is_mixed_script is True
+    cleaned = strip_confusables(spoofed)
+    assert CYRILLIC_A not in cleaned
+    assert "doğrulayın" in cleaned
