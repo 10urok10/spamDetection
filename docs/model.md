@@ -1,5 +1,53 @@
 # Model (Stage 2)
 
+## Update (2026-08): the reklam class was fixed by real data, not more synthetic seeds
+
+After the flat-taxonomy pivot below, `reklam` went through many rounds of
+targeted synthetic-seed patching (adding examples for specific confusable
+patterns: "TIKLA KAZAN"-style openers, "%40" vs "yuzde 40", formal KVKK
+notices that mention marketing, referral-bonus ads, ...). Each round
+measurably helped, but one pattern - referral-bonus ads structurally
+resembling `gambling_scam.yaml`'s referral-bonus scams - survived several
+rounds of dedicated fixing, including one attempt that was reverted after
+it regressed three other previously-correct cases (a textbook whack-a-mole
+instance, see `data/synthetic/seeds/reklam.yaml`'s own note on it).
+
+The actual fix turned out not to be more synthetic seeds at all. A
+throwaway comment from the user - "these are all bilgilendirme, there's
+no reklam in here" while manually reviewing the public dataset's "ham"
+bucket via `scripts/label_tool.py` - led to checking the "spam"-labeled
+bucket instead (~2,787 real Turkish rows across `turkish_sms_collection`/
+`turkish_spam_dataset`). It turned out to be **overwhelmingly real
+advertising** from identifiable brands (KIGILI, Garanti Mortgage, Vatan,
+CarrefourSA, VakifBank Worldcard, Paraf, ...), not fraud - only ~1-2% was
+genuine gambling/scam content. These datasets' original annotators
+evidently used "spam" to mean "any bulk/commercial SMS," not this
+project's narrower definition. That meant **the training pipeline had
+been feeding the model thousands of real ads labeled as spam**, directly
+undermining every synthetic reklam seed added to counteract it - a much
+bigger structural cause of the reklam-vs-spam confusion than anything
+seed-level patching could fix, no matter how many rounds.
+
+Fix: `manual_labels.py` + `scripts/label_tool.py`/`bulk_label_spam_bucket.py`
+relabel that bucket (see their docstrings) and merge it into training
+with priority over the public loaders' default mapping. After the user
+hand-labeled a 185-row sample (96% reklam, confirming the finding) and a
+narrow hand-verified keyword rule bulk-classified the rest, retraining on
+~2,700 additional real reklam rows fixed *every* remaining known
+confusable pattern in one pass, including the referral-bonus case that
+had survived multiple dedicated synthetic-seed rounds - the first time
+the project's 10-case novel-brand regression probe went 10/10. The
+resulting test f1_macro (~0.969) is *lower* than earlier purely-synthetic
+rounds (~0.99), and that's the honest, trustworthy number: the higher
+ones were inflated by a test set that was mostly template-paraphrases of
+~100 hand-written seeds (see "Training data caveat" below - this is the
+same train/test-realism lesson recurring at a different layer). Moral,
+consistent with this file's older findings: when real message diversity
+is available, it beats synthetic seed patching outright rather than just
+supplementing it - don't reach for another synthetic-seed round to fix a
+persistent confusable pattern before checking whether relabeling
+existing public data can do it instead.
+
 ## Update (2026-08): flat 4-category taxonomy
 
 The label scheme changed after this doc's investigation history below was
