@@ -132,8 +132,12 @@ def test_pipeline_spam_with_high_confidence_reklam_overrides_to_legitimate():
 
     result = pipeline.process("msg-1", "Bu hafta magazamizda yuzde 40 indirim var!")
     assert result.prediction.label == "legitimate"
-    assert result.prediction.confidence == 0.1  # Stage A's own P(legitimate), not fabricated
-    assert result.prediction.probabilities == {"spam": 0.9, "legitimate": 0.1}  # unchanged, for audit
+    # confidence reflects what actually drove the override (the ad
+    # classifier's own probability), not Stage A's stale P(legitimate) -
+    # showing that instead would print "legitimate (10% confidence)",
+    # which reads as broken.
+    assert result.prediction.confidence == 0.9
+    assert result.prediction.probabilities == {"spam": 0.9, "legitimate": 0.1}  # Stage A's own, kept for audit
     assert result.subtype.subtype == "reklam"
     assert result.subtype.source == "model"
 
@@ -145,6 +149,7 @@ def test_pipeline_spam_with_otp_match_always_overrides():
 
     result = pipeline.process("msg-1", "Kodunuz: 123456. Kimseyle paylasmayin.")
     assert result.prediction.label == "legitimate"
+    assert result.prediction.confidence == 0.95
     assert result.subtype.subtype == "otp"
 
 

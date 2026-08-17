@@ -103,11 +103,19 @@ class ClassificationPipeline:
                 candidate = self.subtype_detector.detect(cleaned)
                 if _should_override_spam_verdict(candidate):
                     subtype_result = candidate
+                    # confidence reflects what actually drove this call
+                    # (the override decision), not Stage A's stale,
+                    # near-irrelevant original P(legitimate) - reporting
+                    # that instead would print something like "legitimate
+                    # (2% confidence)", which reads as broken even though
+                    # it's technically an honest number from the wrong
+                    # question. otp is a deterministic rule match
+                    # (effectively certain); reklam uses the probability
+                    # that actually triggered the override.
+                    override_confidence = 0.95 if candidate.subtype == OTP else (candidate.reklam_probability or 0.0)
                     prediction = PredictionResult(
                         label="legitimate",
-                        confidence=prediction.probabilities.get(
-                            "legitimate", candidate.reklam_probability or 0.0
-                        ),
+                        confidence=override_confidence,
                         probabilities=prediction.probabilities,
                     )
 
