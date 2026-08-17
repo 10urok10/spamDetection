@@ -115,8 +115,20 @@ def already_decided_texts(path: str | Path) -> set[str]:
 
 
 def append_decision(
-    path: str | Path, *, text: str, label: str, original_label: str, original_source: str
+    path: str | Path,
+    *,
+    text: str,
+    label: str,
+    original_label: str,
+    original_source: str,
+    method: str = "manual",
 ) -> None:
+    """``method`` is "manual" (a human clicked a button in
+    scripts/label_tool.py, the default) or "bulk_rule" (a reviewed,
+    hand-verified keyword rule applied in bulk - see
+    scripts/bulk_label_spam_bucket.py) - recorded for audit/provenance
+    only, doesn't affect training (load_manual_labels doesn't filter on
+    it)."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     row = {
@@ -124,6 +136,7 @@ def append_decision(
         "label": label,
         "original_label": original_label,
         "original_source": original_source,
+        "method": method,
     }
     with open(path, "a", encoding="utf-8") as f:
         f.write(json.dumps(row, ensure_ascii=False) + "\n")
@@ -153,7 +166,13 @@ def load_manual_labels(path: str | Path, *, lang: Lang = Lang.TR) -> list[Record
                     label=Label(row["label"]),
                     source=SOURCE_NAME,
                     lang=lang,
-                    extra={"original_label": row["original_label"], "original_source": row["original_source"]},
+                    extra={
+                        "original_label": row["original_label"],
+                        "original_source": row["original_source"],
+                        # older rows (written before the method field
+                        # existed) were all manual button-clicks
+                        "method": row.get("method", "manual"),
+                    },
                 )
             )
     return records

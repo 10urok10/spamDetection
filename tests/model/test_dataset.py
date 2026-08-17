@@ -23,6 +23,7 @@ def test_build_training_dataframe_combines_synthetic_sources_offline(tmp_path):
     df = build_training_dataframe(
         raw_dir=tmp_path / "raw",  # empty -> all public loaders skipped
         seed_dir=seed_dir,
+        manual_labels_path=tmp_path / "no_manual_labels.jsonl",  # nonexistent -> isolated from the real project's file
         include_turkishsms_ds=False,
         n_per_seed=2,
     )
