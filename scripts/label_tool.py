@@ -1,10 +1,13 @@
-"""Standalone local tool for manually relabeling public-dataset "ham"
-rows into otp/reklam/bilgilendirme/spam - see src/spamdet/manual_labels.py
-for why this exists. Deliberately NOT part of the live API (create_app()):
-no model/Redis/outbreak dependency, just a fast local labeling loop.
+"""Standalone local tool for manually relabeling public-dataset rows
+into otp/reklam/bilgilendirme/spam - see src/spamdet/manual_labels.py
+for why this exists (short version: a manual sample check found the
+"spam"-labeled bucket is overwhelmingly real advertisements, not fraud -
+so it's reviewed first, "ham" second). Deliberately NOT part of the live
+API (create_app()): no model/Redis/outbreak dependency, just a fast
+local labeling loop.
 
-Progress is saved incrementally to data/manual_labels/relabeled_ham.jsonl
-as you go, so it's always safe to stop (Ctrl+C) and resume later - already-
+Progress is saved incrementally to data/manual_labels/relabeled.jsonl as
+you go, so it's always safe to stop (Ctrl+C) and resume later - already-
 decided messages never resurface.
 
 Usage:
@@ -70,8 +73,10 @@ def label_page(request: Request):
 
 
 @app.post("/label/decide")
-def label_decide(text: str = Form(...), original_source: str = Form(...), label: str = Form(...)) -> RedirectResponse:
-    append_decision(OUTPUT_PATH, text=text, label=label, original_label="ham", original_source=original_source)
+def label_decide(
+    text: str = Form(...), original_source: str = Form(...), original_label: str = Form(...), label: str = Form(...)
+) -> RedirectResponse:
+    append_decision(OUTPUT_PATH, text=text, label=label, original_label=original_label, original_source=original_source)
     DONE.add(text)
     return RedirectResponse(url="/label", status_code=303)
 

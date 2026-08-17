@@ -48,7 +48,7 @@ def test_load_manual_labels_empty_when_file_missing(tmp_path):
     assert load_manual_labels(tmp_path / "does_not_exist.jsonl") == []
 
 
-def test_build_candidate_pool_only_includes_ham_rows_ordered_sms_first(tmp_path):
+def test_build_candidate_pool_includes_both_buckets_spam_first(tmp_path):
     raw_dir = tmp_path / "raw"
     (raw_dir / "turkish_sms_collection").mkdir(parents=True)
     (raw_dir / "turkish_sms_collection" / "sms.csv").write_text(
@@ -60,7 +60,12 @@ def test_build_candidate_pool_only_includes_ham_rows_ordered_sms_first(tmp_path)
     )
     pool = build_candidate_pool(raw_dir)
 
-    assert len(pool) == 2  # only the two "normal"/ham rows, not the spam-labeled one
-    assert all(item["original_label"] == "ham" for item in pool)
-    assert all(item["original_source"] == "turkish_sms_collection" for item in pool)
-    assert {item["text"] for item in pool} == {"Yarin saat 10da toplanti var", "Kargonuz dagitima cikmistir"}
+    assert len(pool) == 3  # both the spam-labeled and the two normal/ham rows
+    assert pool[0]["original_label"] == "spam"  # spam bucket ordered first
+    assert pool[0]["text"] == "Bedava bonus kazandiniz hemen tiklayin"
+    assert {item["original_label"] for item in pool[1:]} == {"ham"}
+    assert {item["text"] for item in pool} == {
+        "Bedava bonus kazandiniz hemen tiklayin",
+        "Yarin saat 10da toplanti var",
+        "Kargonuz dagitima cikmistir",
+    }

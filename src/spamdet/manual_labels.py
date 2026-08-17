@@ -1,17 +1,27 @@
-"""Support for manually re-labeling public-dataset "ham" rows into the
-real otp/reklam/bilgilendirme/spam taxonomy.
+"""Support for manually re-labeling public-dataset rows into the real
+otp/reklam/bilgilendirme/spam taxonomy.
 
 Why this exists: the public Turkish SMS datasets (turkish_sms_collection,
-turkish_spam_dataset) only distinguish spam vs. ham, so every "ham" row
-gets mapped to Label.BILGILENDIRME by the loaders (see docs/datasets.md).
-In reality that ~2,700-row "ham" pool almost certainly contains real
-otp/reklam messages mislabeled as bilgilendirme - and unlike the
-hand-written synthetic seeds (data/synthetic/seeds/), these are real
-messages from many different real senders, which is exactly the kind of
-diversity `docs/model.md`'s investigation history says actually moves the
-needle. scripts/label_tool.py is the human-facing tool that produces the
-JSONL this module reads; this module is the read/write layer shared
-between that tool and model/dataset.py's training pipeline.
+turkish_spam_dataset) only distinguish spam vs. ham, so the loaders map
+every row to just Label.SPAM or Label.BILGILENDIRME (see docs/datasets.md).
+A manual sample check of the "spam"-labeled bucket (~2,787 rows) found it
+is overwhelmingly real advertising from identifiable brands (KIGILI,
+Garanti Mortgage, Vatan, CarrefourSA, Mudo, ...), not fraud - these
+datasets' original annotators evidently used "spam" to mean "any bulk/
+commercial SMS", not this project's narrower spam definition. That means
+the current pipeline is training thousands of real reklam messages as
+spam examples directly, which is a much bigger source of the reklam-vs-
+spam confusion than anything synthetic seed data alone can fix. The
+"ham" bucket (~2,702 rows) is reviewed too, lower priority - it likely
+still hides some real otp/reklam under the blanket bilgilendirme mapping,
+just at a lower hit rate than the spam bucket.
+
+Unlike the hand-written synthetic seeds (data/synthetic/seeds/), these
+are real messages from many different real senders, which is exactly the
+kind of diversity `docs/model.md`'s investigation history says actually
+moves the needle. scripts/label_tool.py is the human-facing tool that
+produces the JSONL this module reads; this module is the read/write layer
+shared between that tool and model/dataset.py's training pipeline.
 
 The output file lives under data/manual_labels/ (gitignored, same
 rationale as data/review/ - see .gitignore: real message text, possibly
@@ -32,29 +42,36 @@ SOURCE_NAME = "manual_relabel"
 # labeling tool, but excluded from training data.
 SKIP_LABEL = "skip"
 
-# Sources worth hand-reviewing: real Turkish "ham" text where a genuine
-# otp/reklam message is plausibly hiding under the public dataset's
-# binary ham/spam label. sms_spam_collection is deliberately excluded -
-# it's English, no use for Turkish otp/reklam vocabulary; turkishsms_ds
-# is excluded by default since it needs a live network call (see
-# build_dataset.py's --offline convention) rather than local raw/ files.
+# Sources worth hand-reviewing: real Turkish text where the public
+# dataset's binary spam/ham label plausibly hides a real otp/reklam/
+# bilgilendirme message underneath. sms_spam_collection is deliberately
+# excluded - it's English, no use for Turkish otp/reklam vocabulary;
+# turkishsms_ds is excluded by default since it needs a live network call
+# (see build_dataset.py's --offline convention) rather than local raw/
+# files.
 CANDIDATE_SOURCES = ("turkish_sms_collection", "turkish_spam_dataset")
+
+# original dataset label -> the schema value the loaders currently map it
+# to (both loaders' LABEL_MAP happen to be a clean binary spam/ham split,
+# so this is exact, not an approximation).
+_ORIGINAL_LABEL_TO_SCHEMA_VALUE = {"spam": Label.SPAM.value, "ham": Label.BILGILENDIRME.value}
 
 
 def default_output_path(project_root: Path) -> Path:
-    return project_root / "data" / "manual_labels" / "relabeled_ham.jsonl"
+    return project_root / "data" / "manual_labels" / "relabeled.jsonl"
 
 
 def build_candidate_pool(raw_dir: Path, *, rng_seed: int = 42) -> list[dict]:
-    """Real "ham"-labeled Turkish rows from CANDIDATE_SOURCES, as plain
-    dicts ({"text", "original_label", "original_source"}) rather than
-    Records - these aren't confirmed labels yet, just candidates for a
-    human to review. turkish_sms_collection (real SMS text) is ordered
-    before turkish_spam_dataset (per docs/datasets.md this one is
-    actually repurposed *email* ham/spam data, not SMS - forwarded
-    threads, headers, signatures - much less relevant to an SMS
-    classifier and noisier to review), each shuffled internally with a
-    fixed seed so the labeling tool's ordering is stable across restarts
+    """Real Turkish rows from CANDIDATE_SOURCES, as plain dicts
+    ({"text", "original_label", "original_source"}) rather than Records -
+    these aren't confirmed labels yet, just candidates for a human to
+    review. Ordered spam-bucket first (the higher-value target - see the
+    module docstring), ham-bucket second; within each, turkish_sms_
+    collection (real SMS text) before turkish_spam_dataset (per
+    docs/datasets.md this one is actually repurposed *email* ham/spam
+    data, not SMS - forwarded threads, headers, signatures - noisier to
+    review). Each source+label group is shuffled internally with a fixed
+    seed so the labeling tool's ordering is stable across restarts
     (resuming mid-pool doesn't reshuffle what's already been seen).
     """
     from .build_dataset import DEFAULT_RAW_DIR, build_loaders
@@ -65,17 +82,19 @@ def build_candidate_pool(raw_dir: Path, *, rng_seed: int = 42) -> list[dict]:
     if not loaders:
         return []
     df = merge_sources(loaders)
-    ham_df = df[df["label"] == Label.BILGILENDIRME.value]
 
     pool: list[dict] = []
     rng = random.Random(rng_seed)
-    for source in ("turkish_sms_collection", "turkish_spam_dataset"):
-        rows = [
-            {"text": row.text, "original_label": "ham", "original_source": row.source}
-            for row in ham_df[ham_df["source"] == source].itertuples()
-        ]
-        rng.shuffle(rows)
-        pool.extend(rows)
+    for original_label in ("spam", "ham"):
+        schema_value = _ORIGINAL_LABEL_TO_SCHEMA_VALUE[original_label]
+        for source in ("turkish_sms_collection", "turkish_spam_dataset"):
+            subset = df[(df["label"] == schema_value) & (df["source"] == source)]
+            rows = [
+                {"text": row.text, "original_label": original_label, "original_source": row.source}
+                for row in subset.itertuples()
+            ]
+            rng.shuffle(rows)
+            pool.extend(rows)
     return pool
 
 

@@ -79,6 +79,7 @@
     <form method="post" action="/label/decide" id="label-form">
       <input type="hidden" name="text" value="{{ item.text }}">
       <input type="hidden" name="original_source" value="{{ item.original_source }}">
+      <input type="hidden" name="original_label" value="{{ item.original_label }}">
       <div class="buttons">
         <button type="submit" name="label" value="bilgilendirme" class="btn btn-b">Bilgilendirme <span class="key">1</span></button>
         <button type="submit" name="label" value="otp" class="btn btn-o">OTP <span class="key">2</span></button>
