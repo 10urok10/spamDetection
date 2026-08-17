@@ -5,6 +5,8 @@ from pathlib import Path
 import torch
 from transformers import AutoTokenizer
 
+from ..preprocessing.mersis_marker import mark_mersis
+
 
 @dataclass(frozen=True)
 class PredictionResult:
@@ -50,8 +52,12 @@ class SpamClassifier:
         return self.predict_batch([text])[0]
 
     def predict_batch(self, texts: list[str]) -> list[PredictionResult]:
+        # mark_mersis mirrors the same transform applied to training text
+        # in model/train.py's _to_hf_dataset - train/serve must stay in
+        # sync or the marker becomes noise instead of a signal.
+        marked_texts = [mark_mersis(t) for t in texts]
         inputs = self.tokenizer(
-            texts, return_tensors="pt", truncation=True, max_length=self.max_length, padding=True
+            marked_texts, return_tensors="pt", truncation=True, max_length=self.max_length, padding=True
         )
         with torch.no_grad():
             outputs = self.model(**inputs)

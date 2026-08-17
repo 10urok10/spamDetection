@@ -17,6 +17,7 @@ from .dataset import DEFAULT_SEED_DIR, build_training_dataframe, split_dataset, 
 from .focal_loss import FocalLoss, FocalLossTrainer, compute_class_weights
 from .labels import ID2LABEL, LABEL2ID, LABELS
 from ..build_dataset import DEFAULT_RAW_DIR
+from ..preprocessing.mersis_marker import mark_mersis
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "models" / "spamdet-mdeberta"
@@ -28,7 +29,12 @@ def _to_hf_dataset(df, tokenizer, max_length: int) -> Dataset:
     ds = ds.map(lambda batch: {"labels": [LABEL2ID[label] for label in batch["label"]]}, batched=True)
 
     def _tokenize(batch):
-        return tokenizer(batch["text"], truncation=True, max_length=max_length)
+        # mark_mersis is applied here (not baked into the stored
+        # text/parquet splits) so it's a pure tokenizer-input transform -
+        # see preprocessing/mersis_marker.py. inference.py applies the
+        # exact same function at serve time, so train/serve stay in sync.
+        marked_texts = [mark_mersis(t) for t in batch["text"]]
+        return tokenizer(marked_texts, truncation=True, max_length=max_length)
 
     ds = ds.map(_tokenize, batched=True)
     return ds.remove_columns(["text", "label"])
