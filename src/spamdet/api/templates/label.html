@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>spamdet - Manuel Etiketleme</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      margin: 0;
+      background: #0b0d12;
+      color: #e6e6e6;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+    .progress-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .progress-text { font-size: 0.9rem; color: #9a9a9a; }
+    .progress-track { height: 8px; background: #1c1f27; border-radius: 4px; overflow: hidden; margin-top: 0.4rem; }
+    .progress-fill { height: 100%; background: #3987e5; border-radius: 4px; transition: width 0.2s ease; }
+    .source-tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      color: #9a9a9a;
+      background: #16181f;
+      border: 1px solid #2c2c2a;
+      border-radius: 999px;
+      padding: 0.2rem 0.65rem;
+      margin-bottom: 0.9rem;
+    }
+    .text-card {
+      background: #16181f;
+      border: 1px solid #2c2c2a;
+      border-radius: 10px;
+      padding: 1.4rem;
+      font-size: 1.15rem;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin-bottom: 1.5rem;
+      min-height: 3rem;
+    }
+    .buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
+    .btn {
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 0.9rem 1rem;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .btn .key { opacity: 0.7; font-weight: 400; font-size: 0.85rem; }
+    .btn-b { background: #1a9c63; }
+    .btn-o { background: #2a78d6; }
+    .btn-r { background: #c9760a; }
+    .btn-s { background: #d6362a; }
+    .btn-skip { background: #2c2c2a; color: #9a9a9a; grid-column: span 2; }
+    .btn:hover { filter: brightness(1.1); }
+    .empty { color: #9a9a9a; font-size: 1.05rem; text-align: center; margin-top: 3rem; }
+    .hint { color: #666; font-size: 0.8rem; margin-top: 1.2rem; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="progress-row">
+      <span class="progress-text">{{ done }} / {{ total }} tamamlandi</span>
+      <span class="progress-text">kalan: {{ remaining }}</span>
+    </div>
+    <div class="progress-track"><div class="progress-fill" style="width: {{ (done / total * 100) if total else 0 }}%;"></div></div>
+    <br>
+
+    {% if item %}
+    <div class="source-tag">{{ item.original_source }} - orijinal etiket: {{ item.original_label }}</div>
+    <div class="text-card">{{ item.text }}</div>
+    <form method="post" action="/label/decide" id="label-form">
+      <input type="hidden" name="text" value="{{ item.text }}">
+      <input type="hidden" name="original_source" value="{{ item.original_source }}">
+      <div class="buttons">
+        <button type="submit" name="label" value="bilgilendirme" class="btn btn-b">Bilgilendirme <span class="key">1</span></button>
+        <button type="submit" name="label" value="otp" class="btn btn-o">OTP <span class="key">2</span></button>
+        <button type="submit" name="label" value="reklam" class="btn btn-r">Reklam <span class="key">3</span></button>
+        <button type="submit" name="label" value="spam" class="btn btn-s">Spam <span class="key">4</span></button>
+        <button type="submit" name="label" value="skip" class="btn btn-skip">Atla / belirsiz <span class="key">0</span></button>
+      </div>
+    </form>
+    <p class="hint">Klavye kisayollari: 1 Bilgilendirme, 2 OTP, 3 Reklam, 4 Spam, 0 Atla</p>
+    {% else %}
+    <p class="empty">Havuzda etiketlenecek mesaj kalmadi. Tebrikler!</p>
+    {% endif %}
+  </div>
+
+<script>
+document.addEventListener("keydown", (e) => {
+  const map = {"1": "bilgilendirme", "2": "otp", "3": "reklam", "4": "spam", "0": "skip"};
+  const value = map[e.key];
+  if (!value) return;
+  const form = document.getElementById("label-form");
+  if (!form) return;
+  const btn = form.querySelector(`button[value="${value}"]`);
+  if (btn) btn.click();
+});
+</script>
+</body>
+</html>

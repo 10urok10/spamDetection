@@ -22,6 +22,12 @@ data/synthetic/generated/*
 data/review/*
 !data/review/.gitkeep
 
+# manually-relabeled public-dataset rows (scripts/label_tool.py) - same
+# rationale as data/review/: real message text, not ours to redistribute
+# even though the source dataset is public (see manual_labels.py)
+data/manual_labels/*
+!data/manual_labels/.gitkeep
+
 .env
 
 # trained model weights/checkpoints - too large for git, reproducible via
