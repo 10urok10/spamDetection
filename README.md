@@ -165,6 +165,40 @@ result = detector.ingest("msg-id-1", "Tebrikler! Bonus kazandiniz...")
 See `docs/outbreak.md` for the LSH band-width tuning rationale and what's
 deliberately not implemented yet.
 
+## Manually relabeling public-dataset rows
+
+The public spam/ham datasets are binary, so the loaders blanket-map every
+row to `Label.SPAM`/`Label.BILGILENDIRME` (see `docs/datasets.md`). A
+manual check found the "spam"-labeled bucket is overwhelmingly real
+advertising, not fraud - the datasets' original annotators used "spam" to
+mean any bulk/commercial SMS. `scripts/label_tool.py` is a standalone
+local tool (no model/Redis dependency) for relabeling candidates by hand:
+
+```
+python scripts/label_tool.py    # http://localhost:8010/label
+```
+
+One message at a time, keyboard shortcuts 1/2/3/4/0 (bilgilendirme/otp/
+reklam/spam/skip). Progress saves incrementally to
+`data/manual_labels/relabeled.jsonl` (gitignored - real message text,
+same rationale as `data/review/`), safe to stop and resume. For bulk-
+classifying the remainder of the spam bucket via a narrow, hand-verified
+keyword list (gambling/adult-scam terms only - **not** a broad "predatory
+loan" rule, which false-positived on real bank card campaigns):
+
+```
+python scripts/bulk_label_spam_bucket.py            # dry run, prints counts
+python scripts/bulk_label_spam_bucket.py --commit    # actually writes decisions
+```
+
+`model/dataset.py`'s `build_training_dataframe()` picks up
+`data/manual_labels/relabeled.jsonl` automatically (merged with priority
+over the public loaders' default mapping) - no flag needed, missing file
+is a silent no-op. See `manual_labels.py`'s module docstring and
+`docs/model.md`'s 2026-08 update for the full finding. The "ham" bucket
+has not been reviewed yet - a real remaining opportunity, lower priority
+since it's already mostly genuine bilgilendirme.
+
 ## Running the API
 
 Local (no Docker):
@@ -208,6 +242,11 @@ src/spamdet/
     zero_width.py          invisible-character stripping (+ injection for
                             adversarial generation)
     url_tools.py            URL extraction + SSRF-safe redirect unshortening
+    mersis_marker.py         soft "Mersis number present" tokenizer-input signal
+    shortener_marker.py       soft "generic link-shortener present" signal
+    input_markers.py          mark_all() - composes the two markers above,
+                               used identically by model/train.py and inference.py
+  manual_labels.py        candidate pool + JSONL round-trip for the relabeling tool
   synthetic/
     seeds.py                loads data/synthetic/seeds/*.yaml
     augment.py               rule-based paraphrase augmentation
@@ -232,16 +271,19 @@ src/spamdet/
     app.py                          create_app() factory + all routes
     templates/dashboard.html         server-rendered review dashboard
     templates/demo.html               interactive JS classify-anything sandbox
+    templates/label.html              scripts/label_tool.py's relabeling UI
   merge.py                combines loader outputs into one deduplicated table
   build_dataset.py         scripts/build_dataset.py entry point
   generate_synthetic.py    scripts/generate_synthetic.py entry point
-scripts/                  thin CLI wrappers + inspect_raw.py debug helper
+scripts/                  thin CLI wrappers + inspect_raw.py debug helper;
+                           label_tool.py + bulk_label_spam_bucket.py (see above)
 data/
   raw/         gitignored - manually downloaded source files
   processed/   gitignored - merge.py / model.dataset output
   synthetic/
     seeds/       committed - hand-authored YAML seed examples (otp/reklam/spam/bilgilendirme)
     generated/   gitignored - augment/adversarial script output
+  manual_labels/  gitignored - relabeled.jsonl (scripts/label_tool.py output)
   review/      gitignored - confirmed.jsonl (human-approved review items)
 models/        gitignored - train_model.py / export_onnx.py output
 Dockerfile            api service image (CPU-only torch/onnxruntime)
@@ -275,10 +317,26 @@ docs/
   code by default (the `datafetch` extra installs the `kaggle` CLI
   separately if you want to script it yourself). Raw files are just
   expected to already exist under `data/raw/`.
-- **Synthetic seed text is ASCII-only Turkish** (no `ç/ğ/ı/ö/ş/ü`
+- **Synthetic seed text is mostly ASCII-only Turkish** (no `ç/ğ/ı/ö/ş/ü`
   diacritics) - deliberately, since a large share of real Turkish
   SMS/spam traffic is typed without them; diacritic handling itself is
-  covered separately by the homoglyph/zero-width test suites.
+  covered separately by the homoglyph/zero-width test suites. Formal-
+  register content (KVKK notices, account-status updates) is an exception
+  and is written with real diacritics on purpose - that register is
+  reliably written that way in practice, and testing it via an ASCII-
+  transliterated version was found to mask real classification gaps
+  (see `docs/model.md`'s 2026-08-18 update).
 - Rule-based paraphrasing (`TemplateParaphraser`) is intentionally simple
   and offline; an LLM-backed `Paraphraser` can be swapped in later without
   changing `augment_examples()`'s signature.
+- **No automated regression-test gate on the trained model.** All live
+  verification so far has been manual/conversational (POST real messages
+  to a running `/classify`, eyeball the label) - there's no checked-in
+  fixed test set of confirmed (label, text) pairs a future retrain gets
+  automatically checked against. Combined with real train-to-train
+  variance (identical data + a pinned seed does not guarantee identical
+  model behavior - GPU op non-determinism), a retrain's pass/fail on any
+  informal check should not be over-trusted in isolation. Building that
+  checked-in regression set is the most valuable next step before more
+  ad-hoc fixing - see `CLAUDE.md`'s "Status" section for the fuller list
+  of currently-known-fragile patterns.

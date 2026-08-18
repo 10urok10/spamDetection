@@ -51,10 +51,20 @@ python scripts/train_model.py [--offline]        # fine-tune -> models/spamdet-m
 python scripts/export_onnx.py                    # -> models/spamdet-mdeberta-onnx/
 python scripts/run_api.py                        # serve on :8000 (needs Redis reachable)
 python scripts/inspect_raw.py                    # print real columns of files in data/raw/
+python scripts/label_tool.py                     # manual relabeling UI at :8010/label (see below)
+python scripts/bulk_label_spam_bucket.py [--commit]  # bulk-classify the rest of the spam bucket
 
 docker compose up -d redis      # Redis only, for local dev against scripts/run_api.py
 docker compose up -d --build    # full api+redis stack (needs models/ present, mounted read-only)
 ```
+
+No Docker was used this session (see the "Docker/WSL2" note above) - local dev/testing ran the API
+directly via a scratchpad script calling `create_app(classifier=SpamClassifier(get_model_dir()),
+redis_client=fakeredis.FakeStrictRedis(...))` on port 8000, bypassing Docker/real Redis entirely.
+Recreate it if resuming: it's ~15 lines, see `api/config.get_model_dir` + `model.inference.SpamClassifier`
++ `fakeredis.FakeStrictRedis(decode_responses=False)` wired into `create_app()`. Kill stale listeners with
+`Get-NetTCPConnection -LocalPort 8000 | Where State -eq Listen | % { Stop-Process -Id $_.OwningProcess -Force }`
+before restarting after a retrain (the ONNX dir is loaded once at process startup, not hot-reloaded).
 
 Almost everything defaults to skipping steps gracefully rather than
 failing: `build_dataset.py`/`train.py` print `[skip] <source>: ...` for
@@ -162,6 +172,56 @@ logic layered on top of the model's own verdict anymore (the earlier
 "spam-override-to-legitimate-subtype" mechanism was deleted along with the
 subtype layer).
 
+**Manual relabeling of public-dataset rows** (`manual_labels.py`,
+`scripts/label_tool.py`, `scripts/bulk_label_spam_bucket.py`) — the single
+highest-leverage fix found in this project's history so far. The public
+Turkish datasets (`turkish_sms_collection`, `turkish_spam_dataset`) only
+distinguish spam vs. ham, so the loaders blanket-map every row to
+`Label.SPAM`/`Label.BILGILENDIRME`. A manual sample check of the
+"spam"-labeled bucket (2,787 rows) found it's **overwhelmingly real
+advertising** (KIGILI, Garanti Mortgage, Vatan, CarrefourSA, VakifBank
+Worldcard, ...), not fraud - the original annotators evidently used
+"spam" to mean any bulk/commercial SMS. That means the pipeline had been
+training thousands of real ads as spam examples directly, a much bigger
+structural cause of reklam-vs-spam confusion than any amount of synthetic
+seed patching could fix. `scripts/label_tool.py` is a standalone local
+FastAPI tool (`:8010/label`, no model/Redis dependency) for a human to
+bulk-relabel candidates one at a time (keyboard shortcuts 1-4/0);
+`scripts/bulk_label_spam_bucket.py` auto-classifies the rest via a narrow,
+hand-verified keyword list (gambling/adult-scam terms - **not** a broad
+"nakit avans"/"kart son 6 hane" rule, which had a bad false-positive rate
+against real VakifBank/Paraf card campaigns that use the identical
+mechanic) defaulting everything else to reklam. `model/dataset.py`'s
+`build_training_dataframe()` merges `data/manual_labels/relabeled.jsonl`
+in FIRST so a human-confirmed relabeling overrides the public loader's
+default mapping for that exact text. The whole spam bucket (2,787 rows)
+is now processed (178 manual + 2,522 bulk → reklam; 6 manual + 27 bulk →
+spam; 53 → skip, garbled MIME email fragments); the **ham bucket (~2,702
+rows) has never been reviewed** - a real remaining opportunity, lower
+priority since ham is already mostly genuine bilgilendirme. The file is
+gitignored (same rationale as `data/review/` - real message text
+shouldn't be redistributed even though the source dataset is public), so
+a fresh clone has none of this until someone re-runs the tool.
+
+**Soft tokenizer-input markers, not hard rules** (`preprocessing/
+mersis_marker.py`, `shortener_marker.py`, composed by `input_markers.py`'s
+`mark_all()`, applied identically in `model/train.py` and
+`model/inference.py` so train/serve never drift) - when regex detects a
+Mersis-number pattern or a known generic-shortener domain (bit.ly,
+cutt.ly, dub.sh, tinyurl.com, ... - deliberately excluding company-owned
+branded shortlinks like `hpj.im`/`app.hb.biz`/`mgrs.link`, which already
+carry a real identity signal), it prepends a marker token
+(`[MERSIS_VAR]`/`[SHORTENER_VAR]`) to what the tokenizer sees. This is
+explicitly **not** a classification rule - a real customer-satisfaction
+survey has a Mersis number and is bilgilendirme, not reklam (see
+`otp_rule.py`'s docstring), so the signal is just given to the model to
+weigh, same as any other token. Same design as `otp_rule.py`'s hard rule
+only where the pattern is genuinely deterministic (a code + disclaimer
+phrase); everywhere else, prefer a soft signal or more real training data
+over a hard trigger - a broad keyword rule for "predatory loan SMS" was
+tried and rejected for exactly this reason (false-positived on real bank
+cash-advance campaigns).
+
 **Deliberately-not-built, documented instead of coded** (don't
 "fix" these without re-reading why first): URL unshortening
 (`preprocessing/url_tools.py`) is fully built and tested but *not* called
@@ -181,15 +241,105 @@ forbids the commercial use this project is scoped for. Details in
 `docs/licensing_notes.md`.
 
 **Small-dataset whack-a-mole is a known, recurring dynamic, not a bug to
-silently "fix" with one seed edit**: with only a small number of
-hand-written synthetic seeds underpinning `otp`/`reklam` (the two
-categories no public dataset covers, ~228 `reklam` rows total —
-currently the smallest/most imbalanced class), nudging one confusable
-message pattern reliably perturbs another. `docs/model.md` documents a
-full real investigation chain of this from before the taxonomy pivot
+silently "fix" with one seed edit**: after the manual-relabeling work
+above, `reklam` is no longer the smallest class (it's now the *second
+largest*, ~3,900 training rows including the 2,700 real relabeled ones -
+`otp` stays smallest but is rule-only so it doesn't matter), but the
+dynamic itself is undiminished - it just moved to smaller sub-patterns
+within a class (e.g. `financial_urgency.yaml`'s hijacked-relative scam
+pattern, ~11 raw examples, got knocked out twice in one session by
+unrelated `reklam` additions elsewhere). `docs/model.md` documents a full
+real investigation chain of this from before the taxonomy pivot
 (including that broadening a catch-all class's example *diversity* — not
 a fine-grained class's *volume* — turned out to be what actually resolved
 a persistent case; the lesson maps onto `bilgilendirme` today the same
-way it mapped onto `legitimate` then). Read it before assuming a single
-new seed example is a permanent fix; validate against the
-regression-style checks the doc describes.
+way it mapped onto `legitimate` then, and now onto `financial_urgency`
+within `spam`). Read it before assuming a single new seed example is a
+permanent fix; validate against the regression-style checks the doc
+describes - and see the next two notes, which qualify what "validate"
+actually requires now.
+
+**Training is not perfectly reproducible even with identical data and a
+pinned seed** - confirmed directly in this project's history: reverting
+`reklam.yaml` to a prior commit byte-for-byte and retraining did *not*
+reproduce that commit's behavior; it landed *worse* (a real fraud message
+that had been correctly `spam` was now `bilgilendirme` at 97%, plus a new
+unrelated regression) than the state being reverted *from*. `TrainingArguments(seed=...)`
+pins weight init and dataloader shuffling, but GPU op non-determinism
+(cuDNN etc.) still causes real run-to-run variance on top of that. Practical
+consequences: (1) "revert the data" is not the same operation as "revert the
+model" - if a regression needs undoing, expect to retrain and re-verify, not
+just `git checkout` the seed file and assume the old behavior comes back;
+(2) a single retrain's pass/fail on the regression suites is not fully
+trustworthy in isolation - a run that looks great might just be a lucky
+draw, and a run that looks bad might not indict the data change that
+preceded it; (3) there is currently no mechanism to select the best of
+several training runs or otherwise control for this - a real gap, not
+yet addressed.
+
+**Test with real Turkish diacritics (ç ğ ı ö ş ü İ), not ASCII-transliterated
+text** - this session's own regression-probe scripts used ASCII text
+throughout (matching the synthetic-seed convention below) and it masked a
+real, severe gap: formal/corporate-register bilgilendirme messages (KVKK
+notices, account-status updates) scored dramatically differently with
+diacritics restored than without (one flipped from correctly
+`bilgilendirme` to wrongly `reklam` at 75%+ purely from that change).
+This was *not* a general "diacritics break everything" problem (the
+established regression suites passed identically either way) - just a
+narrow, real, under-represented style that ASCII testing had been hiding.
+`data/synthetic/seeds/*.yaml` is still deliberately ASCII-only per the
+README's original rationale (informal real SMS often is), but formal-
+register content added since (the Örüntü A/B `bilgilendirme.yaml` batch,
+the KVKK-pattern `reklam.yaml` examples) is written with real diacritics
+on purpose, and any live/manual verification of formal-register text
+should use real diacritics, not a transliterated version.
+
+## Status as of 2026-08-18 (read this before doing more live-testing/fixing)
+
+The model at `models/spamdet-mdeberta(-onnx)/` right now is real, trained,
+and - per manual live verification - passes every established regression
+check with zero misses (16/16 known-regression cases, 10/10 novel-brand
+reklam cases, 5/5 real user-supplied reklam messages, plus a 137-message
+formal-register stress test the user generated). All of today's fixes are
+committed and pushed to `master` (nothing local/uncommitted). But per the
+training-variance note above, treat "currently passing" as *this specific
+trained checkpoint's* state, not a permanent property of the seed data -
+retraining from the current seeds is not guaranteed to reproduce it.
+
+**No committed regression-test file exists yet** - every verification this
+session was done via scratchpad Python scripts (gitignored, session-only,
+not reproducible in a fresh session) that POST real/confirmed-label
+messages to a locally-running `:8000/classify` and check the returned
+label. If resuming: recreate a small fixed set of confirmed real
+(label, text) pairs somewhere durable (a checked-in test data file, not
+another scratchpad script) so future sessions don't have to re-derive
+"what should this message classify as" from scratch by re-reading this
+whole conversation history. This is probably the single most valuable
+next step before doing more ad-hoc fixing.
+
+Known, not-yet-addressed gaps, roughly in priority order:
+1. **No automated regression gate.** All checking is manual/conversational.
+   Nothing stops a future retrain from silently regressing a previously-
+   fixed case; nothing selects the best of multiple training runs.
+2. **The "ham" bucket (~2,702 rows) has never been reviewed** via
+   `scripts/label_tool.py` - real otp/reklam signal plausibly still hides
+   there, mislabeled bilgilendirme, same as the spam bucket was.
+3. **Several confirmed-fragile patterns remain genuinely unresolved**,
+   not just "known" - each has been fixed and then regressed at least
+   once: the "arkadaşını davet et" referral-bonus reklam pattern, bare/
+   brandless short discount messages ("%40 indirim... KODU", no brand
+   context), and the URL-less threat/urgency phishing pattern
+   ("Şimdi doğrulama yapmazsanız..."). Don't assume any of these are
+   solved just because the current checkpoint happens to pass on them.
+4. **`financial_urgency.yaml`'s hijacked-relative scam pattern is thin**
+   (~11 raw examples) and demonstrably sensitive to unrelated changes
+   elsewhere - regressed twice in one session from `reklam.yaml` edits
+   that had nothing to do with it.
+5. **`otp_rule.py` doesn't distinguish OTP/login codes from other
+   "doğrulama kodu"-labeled codes** - a courier delivery-confirmation
+   code ("Teslimat için gerekli doğrulama kodu: 4072...") triggers the
+   rule and gets labeled `otp`. Low real-world harm (still correctly
+   "not spam") but semantically wrong; not fixed.
+6. Beyond the specific formal-register gap already fixed, there's been
+   no systematic sweep confirming every other category/pattern is robust
+   to real Turkish diacritics vs. the ASCII form most seeds are written in.

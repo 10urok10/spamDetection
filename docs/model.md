@@ -1,5 +1,56 @@
 # Model (Stage 2)
 
+## Update (2026-08-18): soft feature markers, a formal-register bilgilendirme
+## gap, and two methodology findings (training variance, diacritics testing)
+
+Continuing from the manual-relabeling breakthrough below, four more things
+came out of the same live-testing session (see `CLAUDE.md`'s "Status"
+section for the full current-state handoff, which supersedes any specific
+number below as more fixes land):
+
+- **Soft tokenizer-input markers** (`preprocessing/mersis_marker.py`,
+  `shortener_marker.py`, `input_markers.py`): a Mersis-number pattern or a
+  known generic-link-shortener domain gets an explicit marker token
+  prepended before tokenization, at both train and serve time. Same
+  philosophy as `otp_rule.py`'s hard rule vs. everything else being a
+  learned signal - these markers are hints, not verdicts, because both
+  signals are genuinely ambiguous on their own (a real customer-survey
+  message has a Mersis number and is bilgilendirme; real bank campaigns
+  use the same "send card's last 6 digits" mechanic scam SMS use). A
+  broader keyword rule for "predatory loan SMS" was tried and explicitly
+  rejected mid-session for this reason - it false-positived on real
+  VakifBank/Paraf card campaigns.
+- **A formal-register bilgilendirme gap** ("Örüntü A": messages informing
+  about an *existing* benefit/campaign's status - expiring, changing,
+  non-renewing - vs. "Örüntü B": calm, no-urgency, no-link security/
+  verification notices) - both share vocabulary with `reklam.yaml`/
+  `phishing.yaml` almost verbatim but were being misclassified as those,
+  sometimes even `spam`. Root cause was under-representation, not a
+  vocabulary problem - fixed with ~20 real+synthetic `bilgilendirme.yaml`
+  additions. The actual differentiator between this pattern and reklam
+  turned out to be subtle and required real back-and-forth with the user
+  to calibrate correctly (e.g. "your benefit expires today" read as
+  bilgilendirme in isolation, but the user's explicit call was that
+  urgently pushing someone to use it before it expires is itself
+  promotional, i.e. reklam - kept as a deliberate contrast pair rather
+  than assumed).
+- **Training is not fully reproducible even with identical data and a
+  pinned seed** - discovered by directly reverting a seed file to a prior
+  commit and retraining, which reproduced a *worse* result than the state
+  being reverted from (GPU op non-determinism on top of the pinned
+  `TrainingArguments(seed=...)`). Reverting data is not the same operation
+  as reverting model behavior; expect to retrain-and-reverify, and don't
+  fully trust one run's pass/fail on the regression suites in isolation.
+- **ASCII-transliterated testing was masking a real gap.** This session's
+  own regression-probe scripts tested with ASCII text (matching the
+  synthetic-seed convention), which is fine for casual-register content
+  but hid how bad the formal-register bilgilendirme gap above actually
+  was - one message scored correctly with ASCII and wrongly once real
+  Turkish diacritics were restored. Confirmed this wasn't a general
+  diacritics problem (all established regression suites held either way)
+  - just evidence that ASCII testing isn't a safe stand-in for formal-
+  register real-world text.
+
 ## Update (2026-08): the reklam class was fixed by real data, not more synthetic seeds
 
 After the flat-taxonomy pivot below, `reklam` went through many rounds of
