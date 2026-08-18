@@ -116,3 +116,7 @@ examples:
   - text: "AL GIT KAMPANYASI! Magazamizdaki secili urunlerde 2. urun yuzde 50 indirimli."
   - text: "YILIN EN BUYUK INDIRIMI basladi! Tum sitede gecerli yuzde 60'a varan firsatlari kacirma. Mersis:1234567890123456. Ret icin RET yaz 4455e gonder."
   - text: "SON 3 SAAT! Elektronik urunlerde ekstra indirim firsati kaciyor, hemen tikla: magaza.com/son3saat"
+  - text: "Tebrikler, başvurunuz kapsamında size özel bir teklif oluşturuldu. Teklif detaylarını hesabınızdan görebilirsiniz."
+    notes: "user-confirmed reklam - regressed to bilgilendirme after the Oruntu A bilgilendirme batch was added (see bilgilendirme.yaml's same-dated notes), since it shares 'hesabinizdan gorebilirsiniz' phrasing with several of those. Deliberate contrast pair: unlike the Oruntu A bilgilendirme examples (which inform about an EXISTING benefit's status - expiring, changing, non-renewing), this one announces a brand NEW offer being created for you ('Tebrikler...ozel bir teklif olusturuldu') - that's the actual differentiator, not the 'check your account for details' phrasing they share."
+  - text: "Tebrikler, kredi başvurunuz değerlendirildi ve size özel bir kredi teklifi oluşturuldu. Detayları uygulamadan inceleyebilirsiniz."
+    notes: "synthetic variant of the same new-personalized-offer pattern, banking sector."

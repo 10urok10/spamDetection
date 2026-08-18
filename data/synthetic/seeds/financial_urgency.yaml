@@ -14,3 +14,7 @@ examples:
   - text: "Vergi cezaniz gecikme faizi islemeden bugun ode, son gun bugun: vergi-son-odeme.net"
   - text: "Emekli maasiniza ozel promosyon, bankanizi degistirin 5000 TL hediye kazanin hemen basvurun"
   - text: "Elektrik/su borcu nedeniyle icraya dusmemek icin hemen bu hesaba odeme yapin: TR120006400000112233445566"
+  - text: "Baba, telefonum suya dustu bu numaradan yaziyorum, acil param lazim bu hesaba atar misin: TR640006200119000006672315"
+    notes: "another hijacked-relative variant, reinforcing the pattern after it regressed (misclassified bilgilendirme) once the calm/informal-register bilgilendirme batch was added - the family-emergency scam and a calm corporate notice share an informal short-message register, so this class needed more than 2 examples to stay anchored."
+  - text: "Canim, whatsapp bozuldu bu hattan yaziyorum, acil bir odeme yapmam lazim, sana gonderdigim hesaba 1500 TL atabilir misin"
+  - text: "Selam, eski numaram devre disi bu yeni hattim, acilen kontor/fatura odemesi icin param lazim, hemen ararim ama simdi TL gonder"
