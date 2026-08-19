@@ -306,21 +306,42 @@ training-variance note above, treat "currently passing" as *this specific
 trained checkpoint's* state, not a permanent property of the seed data -
 retraining from the current seeds is not guaranteed to reproduce it.
 
-**No committed regression-test file exists yet** - every verification this
-session was done via scratchpad Python scripts (gitignored, session-only,
-not reproducible in a fresh session) that POST real/confirmed-label
-messages to a locally-running `:8000/classify` and check the returned
-label. If resuming: recreate a small fixed set of confirmed real
-(label, text) pairs somewhere durable (a checked-in test data file, not
-another scratchpad script) so future sessions don't have to re-derive
-"what should this message classify as" from scratch by re-reading this
-whole conversation history. This is probably the single most valuable
-next step before doing more ad-hoc fixing.
+**Update: `scripts/check_regression.py` now exists** (committed same day as
+this note) - 52 (label, text) pairs accumulated from this project's real
+fix-and-retrain sessions, run by hand after any retrain
+(`python scripts/check_regression.py`). Not part of `pytest` (loads the
+model, too slow for the fast offline suite). This replaces the old
+scratchpad-script-only verification approach; keep adding confirmed cases
+to it going forward instead of leaving verification in disposable
+scratchpad scripts again.
+
+**Planned, not yet built: train multiple times and pick the best run.**
+Confirmed the same day as this note (see the training-variance note
+above): repeating `train_model.py` unmodified produces different
+`check_regression.py` scores from run to run. The concrete plan, agreed
+with the user but deliberately deferred rather than built immediately:
+train N times to separate `--output-dir`s (optionally varying
+`--rng-seed` per run rather than relying only on incidental GPU jitter),
+run `check_regression.py` against each (point it at a given run via the
+`SPAMDET_MODEL_DIR` env var to skip re-exporting ONNX for every
+candidate), keep whichever run scores highest (tie-break: which specific
+cases failed - a missed fraud/spam case is worse than a missed reklam-vs-
+bilgilendirme boundary case - then the training script's own test
+f1_macro), promote the winner to `models/spamdet-mdeberta`, export ONNX
+only for that one, and delete the other runs' checkpoints (each is
+sizeable). A real side-benefit beyond just picking a winner: a case that
+fails in *every* run across repeated training is a genuine data gap
+(needs more real examples), while a case that fails in only some runs is
+just noise not worth chasing further - this is a fast, cheap way to tell
+the two apart before spending more effort on any one "fragile" pattern.
+Not yet turned into a script (e.g. `scripts/train_and_select.py`) - do
+that before relying on this manually.
 
 Known, not-yet-addressed gaps, roughly in priority order:
-1. **No automated regression gate.** All checking is manual/conversational.
-   Nothing stops a future retrain from silently regressing a previously-
-   fixed case; nothing selects the best of multiple training runs.
+1. **No automated regression gate wired into anything.** Verification is
+   manual (`check_regression.py` must be run by hand). Nothing stops a
+   future retrain from silently regressing a previously-fixed case, and
+   the multi-run-selection plan above isn't built yet.
 2. **The "ham" bucket (~2,702 rows) has never been reviewed** via
    `scripts/label_tool.py` - real otp/reklam signal plausibly still hides
    there, mislabeled bilgilendirme, same as the spam bucket was.
