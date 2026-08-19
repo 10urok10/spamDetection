@@ -337,6 +337,22 @@ the two apart before spending more effort on any one "fragile" pattern.
 Not yet turned into a script (e.g. `scripts/train_and_select.py`) - do
 that before relying on this manually.
 
+**Manual dry run of the above (5 repeated `train_model.py` runs, unmodified
+data/seed, same day)**: scores were 50/52, 52/52, 52/52, 51/52, 52/52
+against `check_regression.py`. Genuinely useful finding: **no single case
+failed more than once across the 5 runs** (three different cases each
+failed exactly once - the known-fragile brandless-discount case, plus two
+that had never failed before: a core gambling-spam example and a novel-
+brand reklam case - both scoring in the 55-61% confidence range, i.e.
+real close calls, not confident-wrong). That's evidence *against* a
+systematic data gap in the current seed set for these 52 cases - it looks
+like ordinary boundary noise on a handful of inherently close-margin
+examples, not one pattern needing more training data. The model currently
+on disk is one of the 52/52 runs. This is exactly the diagnostic the
+planned script above should automate, and it's reassuring evidence the
+underlying data is in reasonable shape right now - but it was only 5 runs
+against 52 cases, not proof there's no gap anywhere.
+
 Known, not-yet-addressed gaps, roughly in priority order:
 1. **No automated regression gate wired into anything.** Verification is
    manual (`check_regression.py` must be run by hand). Nothing stops a
